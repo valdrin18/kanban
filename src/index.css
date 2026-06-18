@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #1f2933;
+  background: #f8f7f3;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    "Inter", "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #f8f7f3;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(239, 230, 207, 0.42), transparent 28rem),
+    #f8f7f3;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  color: #1f2933;
+  background: rgba(200, 169, 90, 0.25);
+}
+
+.scrollbar-soft {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(107, 114, 128, 0.28) transparent;
+}
+
+.scrollbar-soft::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+.scrollbar-soft::-webkit-scrollbar-thumb {
+  background: rgba(107, 114, 128, 0.25);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+.scrollbar-soft::-webkit-scrollbar-track {
+  background: transparent;
+}
