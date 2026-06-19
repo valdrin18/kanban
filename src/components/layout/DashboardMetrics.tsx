@@ -3,9 +3,10 @@ import { useMemo } from "react";
 import { useBoardStore } from "../../store/useBoardStore";
 import { isCurrentMonth } from "../../utils/dates";
 import { isFollowUpRecommended } from "../../utils/recommendations";
+import { cn } from "../../lib/utils";
 
 const metricShell =
-  "rounded-[1.75rem] border border-guhr-border bg-white/82 p-5 shadow-card backdrop-blur transition hover:-translate-y-0.5 hover:shadow-soft";
+  "relative p-5 transition hover:bg-guhr-background/45";
 
 export function DashboardMetrics() {
   const clients = useBoardStore((state) => state.clients);
@@ -43,12 +44,23 @@ export function DashboardMetrics() {
   );
 
   return (
-    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {metrics.map((metric) => {
+    <section className="grid overflow-hidden rounded-[1.75rem] bg-white/82 shadow-card backdrop-blur sm:grid-cols-2 xl:grid-cols-4">
+      {metrics.map((metric, index) => {
         const Icon = metric.icon;
 
         return (
-          <article className={metricShell} key={metric.label}>
+          <article
+            className={cn(
+              metricShell,
+              index % 2 === 1 &&
+                "sm:before:absolute sm:before:bottom-6 sm:before:left-0 sm:before:top-6 sm:before:w-px sm:before:bg-guhr-border/75",
+              index > 1 &&
+                "max-sm:border-t max-sm:border-guhr-border/75 sm:border-t sm:border-guhr-border/75 xl:border-t-0",
+              index > 0 &&
+                "xl:before:absolute xl:before:bottom-6 xl:before:left-0 xl:before:top-6 xl:before:w-px xl:before:bg-guhr-border/75",
+            )}
+            key={metric.label}
+          >
             <div className="flex items-center gap-5">
               <span className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-full ${metric.tone}`}>
                 <Icon className="h-8 w-8" />
