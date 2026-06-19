@@ -9,19 +9,21 @@ export function Header() {
           alt="Guhr Steuerberatungsgesellschaft mbH"
           className="h-14 w-auto max-w-[242px] object-contain sm:h-16 sm:max-w-[284px]"
         />
-        <div className="inline-flex items-center rounded-full border border-guhr-border bg-white/82 p-1 shadow-sm backdrop-blur">
+        <div className="inline-flex items-center rounded-full border border-guhr-border bg-white/88 p-1 shadow-sm backdrop-blur">
           <button
             type="button"
-            className="rounded-full bg-guhr-text px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition"
+            className="inline-flex h-9 items-center gap-2 rounded-full bg-guhr-text px-3.5 text-sm font-semibold text-white shadow-sm transition"
             aria-pressed="true"
           >
+            <span className="text-lg leading-none" aria-hidden="true">🇬🇧</span>
             EN
           </button>
           <button
             type="button"
-            className="rounded-full px-3 py-1.5 text-xs font-semibold text-guhr-muted transition hover:bg-guhr-background hover:text-guhr-text"
+            className="inline-flex h-9 items-center gap-2 rounded-full px-3.5 text-sm font-semibold text-guhr-muted transition hover:bg-guhr-background hover:text-guhr-text"
             aria-pressed="false"
           >
+            <span className="flag-de h-5 w-5 shrink-0 rounded-full shadow-sm" aria-hidden="true" />
             DE
           </button>
         </div>

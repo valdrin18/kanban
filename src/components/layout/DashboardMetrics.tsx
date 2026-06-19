@@ -6,7 +6,7 @@ import { isFollowUpRecommended } from "../../utils/recommendations";
 import { cn } from "../../lib/utils";
 
 const metricShell =
-  "relative p-5 transition hover:bg-guhr-background/45";
+  "relative px-4 py-3";
 
 export function DashboardMetrics() {
   const clients = useBoardStore((state) => state.clients);
@@ -44,7 +44,7 @@ export function DashboardMetrics() {
   );
 
   return (
-    <section className="grid overflow-hidden rounded-[1.75rem] bg-white/82 shadow-card backdrop-blur sm:grid-cols-2 xl:grid-cols-4">
+    <section className="grid max-w-[1320px] overflow-hidden sm:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric, index) => {
         const Icon = metric.icon;
 
@@ -53,21 +53,21 @@ export function DashboardMetrics() {
             className={cn(
               metricShell,
               index % 2 === 1 &&
-                "sm:before:absolute sm:before:bottom-6 sm:before:left-0 sm:before:top-6 sm:before:w-px sm:before:bg-guhr-border/75",
+                "sm:before:absolute sm:before:bottom-5 sm:before:left-0 sm:before:top-5 sm:before:w-px sm:before:bg-guhr-border/75",
               index > 1 &&
                 "max-sm:border-t max-sm:border-guhr-border/75 sm:border-t sm:border-guhr-border/75 xl:border-t-0",
               index > 0 &&
-                "xl:before:absolute xl:before:bottom-6 xl:before:left-0 xl:before:top-6 xl:before:w-px xl:before:bg-guhr-border/75",
+                "xl:before:absolute xl:before:bottom-5 xl:before:left-0 xl:before:top-5 xl:before:w-px xl:before:bg-guhr-border/75",
             )}
             key={metric.label}
           >
-            <div className="flex items-center gap-5">
-              <span className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-full ${metric.tone}`}>
-                <Icon className="h-8 w-8" />
+            <div className="flex items-center gap-3">
+              <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full ${metric.tone}`}>
+                <Icon className="h-5 w-5" />
               </span>
               <div className="min-w-0">
-                <p className="text-base font-medium leading-6 text-guhr-muted">{metric.label}</p>
-                <p className="mt-2 text-5xl font-semibold leading-none tracking-normal text-guhr-text">
+                <p className="text-sm font-medium leading-5 text-guhr-muted">{metric.label}</p>
+                <p className="mt-1 text-3xl font-semibold leading-none tracking-normal text-guhr-text">
                   {metric.value}
                 </p>
               </div>

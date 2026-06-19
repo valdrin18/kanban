@@ -18,7 +18,6 @@ interface KanbanColumnProps {
 export function KanbanColumn({ column, clients, placeholderIndex = null }: KanbanColumnProps) {
   const openAddClient = useBoardStore((state) => state.openAddClient);
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
-  const columnIndex = boardColumns.findIndex((item) => item.id === column.id) + 1;
   const normalizedPlaceholderIndex =
     placeholderIndex === null ? null : Math.min(Math.max(placeholderIndex, 0), clients.length);
   const displayCount = clients.length + (normalizedPlaceholderIndex === null ? 0 : 1);
@@ -35,9 +34,6 @@ export function KanbanColumn({ column, clients, placeholderIndex = null }: Kanba
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-guhr-border bg-white text-xs font-semibold text-guhr-muted">
-                {columnIndex}
-              </span>
               <h2 className="text-sm font-semibold leading-5 tracking-normal text-guhr-text">
                 {column.title}
               </h2>
@@ -50,6 +46,7 @@ export function KanbanColumn({ column, clients, placeholderIndex = null }: Kanba
             {displayCount}
           </span>
         </div>
+        <div className="mt-3 border-t border-dotted border-guhr-border" />
         <Button
           size="sm"
           variant="ghost"

@@ -37,6 +37,11 @@ body {
   background-size: 24px 24px;
 }
 
+.flag-de {
+  background: linear-gradient(to bottom, #111827 0 33%, #dd2c2f 33% 66%, #f6c453 66% 100%);
+}
+
+
 button,
 input,
 select,
