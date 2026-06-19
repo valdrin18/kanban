@@ -24,8 +24,8 @@ import {
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useBoardStore } from "../../store/useBoardStore";
 import type { ClientCard, ColumnId, MandateType, TeamMember } from "../../types";
+import { generateAiFollowUp } from "../../utils/aiFollowUp";
 import { formatDateTime } from "../../utils/dates";
-import { generateFollowUp } from "../../utils/followUp";
 import { isFollowUpRecommended } from "../../utils/recommendations";
 import { ChecklistEditor } from "./ChecklistEditor";
 import { Badge } from "../ui/Badge";
@@ -85,6 +85,8 @@ export function ClientDetailDrawer() {
   const addGeneratedActivity = useBoardStore((state) => state.addGeneratedActivity);
   const [draft, setDraft] = useState<ClientDraft | null>(null);
   const [generatedMessage, setGeneratedMessage] = useState("");
+  const [generationError, setGenerationError] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   useBodyScrollLock(Boolean(selectedClientId));
 
@@ -93,6 +95,8 @@ export function ClientDetailDrawer() {
       setDraft(draftFromClient(client));
     }
     setGeneratedMessage("");
+    setGenerationError("");
+    setIsGenerating(false);
     setCopied(false);
   }, [selectedClientId]);
 
@@ -126,11 +130,26 @@ export function ClientDetailDrawer() {
     });
   }
 
-  function handleGenerate() {
+  async function handleGenerate() {
     if (!client) return;
-    setGeneratedMessage(generateFollowUp(client));
-    addGeneratedActivity(client.id);
+    setIsGenerating(true);
     setCopied(false);
+    setGeneratedMessage("");
+    setGenerationError("");
+
+    try {
+      const message = await generateAiFollowUp(client);
+      setGeneratedMessage(message);
+      addGeneratedActivity(client.id);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not generate the follow-up email. Please check the AI configuration.";
+      setGenerationError(message);
+    } finally {
+      setIsGenerating(false);
+    }
   }
 
   async function handleCopy() {
@@ -285,20 +304,28 @@ export function ClientDetailDrawer() {
                   Follow-up generator
                 </h3>
                 <p className="mt-2 max-w-md text-sm leading-6 text-guhr-muted">
-                  Creates a deterministic draft based on stage, missing items and next step.
+                  Uses OpenAI to analyze stage, notes, missing checklist items and next step.
                 </p>
               </div>
-              <Button variant="primary" className="h-11 rounded-2xl px-4 text-sm" onClick={handleGenerate}>
+              <Button
+                variant="primary"
+                className="h-11 rounded-2xl px-4 text-sm"
+                onClick={handleGenerate}
+                disabled={isGenerating}
+              >
                 <Send className="h-4 w-4" />
-                Generate Follow-Up
+                {isGenerating ? "Generating..." : "Generate Follow-Up"}
               </Button>
             </div>
             {generatedMessage && (
               <div className="mt-5 rounded-[1.5rem] border border-guhr-border bg-white p-4">
                 <div className="flex items-center justify-between gap-3 border-b border-guhr-border pb-3">
-                  <div className="flex items-center gap-2 text-guhr-muted">
+                  <div className="flex flex-wrap items-center gap-2 text-guhr-muted">
                     <PencilLine className="h-4 w-4 text-guhr-gold" />
                     <span className="text-sm font-medium">Draft email</span>
+                    <span className="rounded-full bg-guhr-gold-soft px-2.5 py-1 text-xs font-medium text-guhr-gold-dark">
+                      AI-generated
+                    </span>
                   </div>
                   <Button variant="secondary" size="sm" onClick={handleCopy}>
                     <Copy className="h-4 w-4" />
@@ -311,6 +338,11 @@ export function ClientDetailDrawer() {
                   </p>
                   <div className="mt-4 whitespace-pre-wrap">{messageBody}</div>
                 </div>
+              </div>
+            )}
+            {generationError && (
+              <div className="mt-5 rounded-[1.25rem] border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700">
+                {generationError}
               </div>
             )}
           </section>

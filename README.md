@@ -42,7 +42,9 @@ Tax-specific workflow concepts include:
 
 ## AI / Automation Note
 
-For the trial, the follow-up generator is implemented as deterministic template logic to keep the demo lightweight and reliable. In production, this could be connected to OpenAI or Claude with approved templates, human review, audit logging, and compliance safeguards.
+The follow-up generator uses a real AI-backed workflow through a secure server-side endpoint. The React app sends only the selected client context to `/api/generate-follow-up`; the API route then calls the OpenAI Responses API with `OPENAI_API_KEY` from the server environment. The API key is never exposed to the browser.
+
+For production, this should be extended with approved prompt templates, human review before sending, audit logging, rate limits, redaction for sensitive data, and compliance safeguards.
 
 ## How To Run Locally
 
@@ -51,7 +53,14 @@ npm install
 npm run dev
 ```
 
-The app is a standard Vite project and can be deployed to Vercel or Netlify without a backend.
+AI generation requires a server-side OpenAI API key. To enable it locally, create a `.env.local` file and add a fresh OpenAI API key:
+
+```bash
+OPENAI_API_KEY=your_new_key_here
+OPENAI_MODEL=gpt-5.5
+```
+
+Do not expose the key with a `VITE_` prefix. Vite serves a local `/api/generate-follow-up` middleware during `npm run dev`, and the included `api/generate-follow-up.ts` route is ready for Vercel-style deployment. On platforms without the API route or key configured, generation will show a clear configuration/API error.
 
 ## What I Would Improve With More Time
 
