@@ -38,7 +38,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-guhr-background text-guhr-text">
       <Header />
-      <main className="mx-auto flex w-full max-w-[1800px] flex-col gap-6 px-4 pb-10 pt-5 sm:px-6 lg:px-8">
+      <main className="mx-auto flex w-full max-w-[1800px] flex-col gap-4 px-3 pb-8 pt-4 sm:gap-6 sm:px-6 sm:pb-10 sm:pt-5 lg:px-8">
         {isLoading ? (
           <section className="rounded-[2rem] border border-guhr-border bg-white/82 p-8 text-center shadow-card">
             <p className="text-sm font-medium text-guhr-muted">{t(language, "app.loading")}</p>

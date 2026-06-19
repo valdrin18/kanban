@@ -29,11 +29,11 @@ export function KanbanColumn({ column, clients, placeholderIndex = null }: Kanba
     <section
       ref={setNodeRef}
       className={cn(
-        "flex min-h-[245px] w-[318px] shrink-0 flex-col self-start rounded-[1.9rem] border border-guhr-border bg-white/58 p-3 shadow-sm backdrop-blur transition duration-200",
+        "flex min-h-[245px] w-[calc(100vw-3rem)] shrink-0 snap-center snap-always flex-col self-start rounded-[1.45rem] border border-guhr-border bg-white/58 p-2.5 shadow-sm backdrop-blur transition duration-200 sm:rounded-[1.9rem] sm:p-3 md:w-[318px] md:snap-none",
         isOver && "border-guhr-gold/60 bg-white/80 shadow-card",
       )}
     >
-      <div className="px-1.5 pb-3 pt-1">
+      <div className="px-1 pb-3 pt-1 sm:px-1.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -41,7 +41,7 @@ export function KanbanColumn({ column, clients, placeholderIndex = null }: Kanba
                 {translatedColumn.title}
               </h2>
             </div>
-            <p className="mt-2 min-h-[2.6rem] text-xs leading-5 text-guhr-muted">
+            <p className="mt-2 min-h-[2.6rem] text-xs leading-5 text-guhr-muted sm:min-h-[2.6rem]">
               {translatedColumn.description}
             </p>
           </div>
@@ -62,7 +62,7 @@ export function KanbanColumn({ column, clients, placeholderIndex = null }: Kanba
       </div>
 
       <SortableContext items={clients.map((client) => client.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-3 px-2 pb-2 pt-4">
+        <div className="flex flex-col gap-3 px-1 pb-2 pt-4 sm:px-2">
           {clients.map((client, index) => (
             <Fragment key={client.id}>
               {normalizedPlaceholderIndex === index && <DropPlaceholder />}

@@ -53,7 +53,7 @@ export function ClientCard({ client }: ClientCardProps) {
 
   const dragHandle = (
     <button
-      className="mt-0.5 rounded-xl p-1.5 text-guhr-muted opacity-70 transition hover:bg-guhr-background hover:text-guhr-text group-hover:opacity-100"
+      className="mt-0.5 touch-none rounded-xl p-1.5 text-guhr-muted opacity-70 transition hover:bg-guhr-background hover:text-guhr-text group-hover:opacity-100"
       aria-label={`${t(language, "card.drag")} ${client.name}`}
       onClick={(event) => event.stopPropagation()}
       {...attributes}
@@ -124,9 +124,9 @@ function ClientCardArticle({
       style={style}
       onClick={onClick}
       className={cn(
-        "group rounded-[1.35rem] border border-guhr-border bg-white/92 p-4 shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:border-guhr-gold/35 hover:shadow-card",
+        "group rounded-[1.25rem] border border-guhr-border bg-white/92 p-3.5 shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:border-guhr-gold/35 hover:shadow-card sm:rounded-[1.35rem] sm:p-4",
         isDragging && "opacity-0",
-        isOverlay && "w-[300px] rotate-[1deg] cursor-grabbing opacity-90 shadow-soft",
+        isOverlay && "w-[min(300px,calc(100vw-3rem))] rotate-[1deg] cursor-grabbing opacity-90 shadow-soft",
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -157,7 +157,7 @@ function ClientCardArticle({
         {dragHandle}
       </div>
 
-      <div className="mt-4 space-y-2.5 text-sm text-guhr-muted">
+      <div className="mt-3.5 space-y-2.5 text-sm text-guhr-muted sm:mt-4">
         <p className="flex min-w-0 items-center gap-2">
           <Mail className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{client.email}</span>
@@ -172,7 +172,7 @@ function ClientCardArticle({
             {client.mandateTypes.map((type) => translateMandateType(type, language)).join(" / ")}
           </span>
         </p>
-        <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
+        <div className="grid grid-cols-1 gap-2 pt-1 text-xs min-[380px]:grid-cols-2">
           <span className="flex min-w-0 items-center gap-1.5 rounded-2xl bg-guhr-background px-2.5 py-2">
             <UserRound className="h-3.5 w-3.5 shrink-0 text-guhr-gold" />
             <span className="truncate">{client.assignedTo}</span>
@@ -184,7 +184,7 @@ function ClientCardArticle({
         </div>
       </div>
 
-      <div className="mt-4 rounded-[1.1rem] border border-guhr-border/75 bg-guhr-background/70 p-3">
+      <div className="mt-3.5 rounded-[1.1rem] border border-guhr-border/75 bg-guhr-background/70 p-3 sm:mt-4">
         <p className="line-clamp-2 text-sm leading-5 text-guhr-text">
           {translateKnownText(client.nextStep, language)}
         </p>

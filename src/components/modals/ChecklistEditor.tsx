@@ -33,7 +33,7 @@ export function ChecklistEditor({
   }
 
   return (
-    <section className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-4 shadow-sm">
+    <section className="rounded-[1.35rem] border border-guhr-border bg-white/78 p-4 shadow-sm sm:rounded-[1.75rem]">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h3 className="font-semibold text-guhr-text">{t(language, "checklist.title")}</h3>
@@ -88,13 +88,13 @@ export function ChecklistEditor({
           </div>
         ))}
       </div>
-      <form className="mt-3 flex gap-2" onSubmit={handleAdd}>
+      <form className="mt-3 flex flex-col gap-2 min-[420px]:flex-row" onSubmit={handleAdd}>
         <Input
           value={newLabel}
           onChange={(event) => setNewLabel(event.target.value)}
           placeholder={t(language, "checklist.placeholder")}
         />
-        <Button type="submit" variant="secondary" disabled={!newLabel.trim()}>
+        <Button className="w-full min-[420px]:w-auto" type="submit" variant="secondary" disabled={!newLabel.trim()}>
           <Plus className="h-4 w-4" />
           {t(language, "checklist.add")}
         </Button>

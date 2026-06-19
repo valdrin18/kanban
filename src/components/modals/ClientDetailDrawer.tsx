@@ -194,8 +194,8 @@ export function ClientDetailDrawer() {
         onClick={closeClient}
       />
       <aside className="scrollbar-soft h-full w-full overflow-y-auto border-l border-guhr-border bg-guhr-background shadow-soft sm:max-w-[760px]">
-        <div className="sticky top-0 z-10 border-b border-guhr-border bg-guhr-background/92 px-5 py-4 backdrop-blur-2xl sm:px-7">
-          <div className="flex items-start justify-between gap-4">
+        <div className="sticky top-0 z-10 border-b border-guhr-border bg-guhr-background/92 px-4 py-3 backdrop-blur-2xl sm:px-7 sm:py-4">
+          <div className="flex items-start justify-between gap-3 sm:gap-4">
             <div className="min-w-0">
               <div className="flex flex-wrap gap-2">
                 <Badge tone={status.tone}>{status.label}</Badge>
@@ -204,14 +204,14 @@ export function ClientDetailDrawer() {
                 </Badge>
                 {needsFollowUp && <Badge tone="red">{t(language, "drawer.followUpRecommended")}</Badge>}
               </div>
-              <h2 className="mt-3 text-2xl font-semibold tracking-normal text-guhr-text">
+              <h2 className="mt-2 text-xl font-semibold tracking-normal text-guhr-text sm:mt-3 sm:text-2xl">
                 {client.name}
               </h2>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <Button size="sm" variant="primary" onClick={handleSave} disabled={isSaving}>
                 <CheckCircle2 className="h-4 w-4" />
-                {isSaving ? t(language, "drawer.saving") : t(language, "drawer.save")}
+                <span className="max-[360px]:hidden">{isSaving ? t(language, "drawer.saving") : t(language, "drawer.save")}</span>
               </Button>
               <Button size="icon" variant="ghost" onClick={closeClient} aria-label={t(language, "drawer.close")}>
                 <X className="h-5 w-5" />
@@ -220,8 +220,8 @@ export function ClientDetailDrawer() {
           </div>
         </div>
 
-        <div className="space-y-6 px-5 py-6 sm:px-7">
-          <section className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+        <div className="space-y-4 px-4 py-4 sm:space-y-6 sm:px-7 sm:py-6">
+          <section className="grid gap-x-8 gap-y-4 sm:grid-cols-2 sm:gap-y-6">
             <FormField icon={UserRound} label={t(language, "drawer.clientName")}>
               <Input
                 className={embeddedFieldClassName}
@@ -306,10 +306,10 @@ export function ClientDetailDrawer() {
             </FormField>
           </section>
 
-          <section className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-guhr-text">{t(language, "drawer.notes")}</h3>
+          <section className="rounded-[1.35rem] border border-guhr-border bg-white/78 p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
+            <h3 className="text-base font-semibold text-guhr-text sm:text-lg">{t(language, "drawer.notes")}</h3>
             <Textarea
-              className="mt-4 min-h-40 bg-white"
+              className="mt-3 min-h-32 bg-white sm:mt-4 sm:min-h-40"
               value={draft.notes}
               onChange={(event) => updateDraft("notes", event.target.value)}
               placeholder={t(language, "drawer.notesPlaceholder")}
@@ -324,10 +324,10 @@ export function ClientDetailDrawer() {
             onToggle={(itemId) => toggleChecklistItem(client.id, itemId)}
           />
 
-          <section className="rounded-[1.75rem] border border-guhr-border bg-white/82 p-5 shadow-card">
+          <section className="rounded-[1.35rem] border border-guhr-border bg-white/82 p-4 shadow-card sm:rounded-[1.75rem] sm:p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h3 className="text-2xl font-semibold tracking-normal text-guhr-text">
+                <h3 className="text-xl font-semibold tracking-normal text-guhr-text sm:text-2xl">
                   {t(language, "drawer.followUpGenerator")}
                 </h3>
                 <p className="mt-2 max-w-md text-sm leading-6 text-guhr-muted">
@@ -336,7 +336,7 @@ export function ClientDetailDrawer() {
               </div>
               <Button
                 variant="primary"
-                className="h-11 rounded-2xl px-4 text-sm"
+                className="h-10 w-full rounded-2xl px-4 text-sm sm:h-11 sm:w-auto"
                 onClick={handleGenerate}
                 disabled={isGenerating}
               >
@@ -345,8 +345,8 @@ export function ClientDetailDrawer() {
               </Button>
             </div>
             {generatedMessage && (
-              <div className="mt-5 rounded-[1.5rem] border border-guhr-border bg-white p-4">
-                <div className="flex items-center justify-between gap-3 border-b border-guhr-border pb-3">
+              <div className="mt-4 rounded-[1.25rem] border border-guhr-border bg-white p-3.5 sm:mt-5 sm:rounded-[1.5rem] sm:p-4">
+                <div className="flex flex-col gap-3 border-b border-guhr-border pb-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
                   <div className="flex flex-wrap items-center gap-2 text-guhr-muted">
                     <PencilLine className="h-4 w-4 text-guhr-gold" />
                     <span className="text-sm font-medium">{t(language, "drawer.draftEmail")}</span>
@@ -354,12 +354,12 @@ export function ClientDetailDrawer() {
                       {t(language, "drawer.aiGenerated")}
                     </span>
                   </div>
-                  <Button variant="secondary" size="sm" onClick={handleCopy}>
+                  <Button className="w-full min-[420px]:w-auto" variant="secondary" size="sm" onClick={handleCopy}>
                     <Copy className="h-4 w-4" />
                     {copied ? t(language, "drawer.copied") : t(language, "drawer.copy")}
                   </Button>
                 </div>
-                <div className="scrollbar-soft mt-4 max-h-80 overflow-auto text-sm leading-7 text-guhr-text">
+                <div className="scrollbar-soft mt-4 max-h-72 overflow-auto text-sm leading-7 text-guhr-text sm:max-h-80">
                   <p>
                     <strong>{t(language, "drawer.subject")}</strong> {messageSubject}
                   </p>
@@ -374,7 +374,7 @@ export function ClientDetailDrawer() {
             )}
           </section>
 
-          <section className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-4 shadow-sm">
+          <section className="rounded-[1.35rem] border border-guhr-border bg-white/78 p-4 shadow-sm sm:rounded-[1.75rem]">
             <div className="flex items-center gap-2">
               <Clipboard className="h-5 w-5 text-guhr-gold" />
               <h3 className="font-semibold text-guhr-text">{t(language, "drawer.activityTimeline")}</h3>

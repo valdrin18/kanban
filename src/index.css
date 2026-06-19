@@ -37,6 +37,18 @@ body {
   background-size: 24px 24px;
 }
 
+.board-track {
+  width: max-content;
+}
+
+@media (min-width: 768px) {
+  .board-track {
+    width: var(--board-width, 100%);
+    transform: scale(var(--board-zoom, 1));
+    transform-origin: top left;
+  }
+}
+
 .flag-de {
   background: linear-gradient(to bottom, #111827 0 33%, #dd2c2f 33% 66%, #f6c453 66% 100%);
 }

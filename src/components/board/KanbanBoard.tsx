@@ -12,8 +12,9 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Minus, Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "../../lib/i18n";
+import { cn } from "../../lib/utils";
 import { useFilteredClients } from "../../hooks/useFilteredClients";
 import { useBoardStore } from "../../store/useBoardStore";
 import { useLanguageStore } from "../../store/useLanguageStore";
@@ -46,6 +47,8 @@ export function KanbanBoard() {
   const clients = useFilteredClients();
   const boardColumns = useBoardStore((state) => state.boardColumns);
   const moveClient = useBoardStore((state) => state.moveClient);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const dragPointerXRef = useRef<number | null>(null);
   const [activeClientId, setActiveClientId] = useState<string | null>(null);
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
   const [zoomIndex, setZoomIndex] = useState(2);
@@ -74,6 +77,54 @@ export function KanbanBoard() {
   }, [activeClientId, clients]);
 
   const activeClient = clients.find((client) => client.id === activeClientId);
+
+  useEffect(() => {
+    if (!activeClientId) return;
+
+    let frameId = 0;
+
+    function updatePointerX(event: PointerEvent) {
+      dragPointerXRef.current = event.clientX;
+    }
+
+    function updateTouchX(event: TouchEvent) {
+      dragPointerXRef.current = event.touches[0]?.clientX ?? null;
+    }
+
+    function autoScroll() {
+      const container = scrollContainerRef.current;
+      const pointerX = dragPointerXRef.current;
+
+      if (container && pointerX !== null && window.innerWidth < 768) {
+        const rect = container.getBoundingClientRect();
+        const edgeSize = Math.min(92, rect.width * 0.24);
+        const leftDistance = pointerX - rect.left;
+        const rightDistance = rect.right - pointerX;
+        const maxStep = 22;
+
+        if (rightDistance < edgeSize) {
+          const strength = 1 - Math.max(rightDistance, 0) / edgeSize;
+          container.scrollLeft += Math.max(6, maxStep * strength);
+        } else if (leftDistance < edgeSize) {
+          const strength = 1 - Math.max(leftDistance, 0) / edgeSize;
+          container.scrollLeft -= Math.max(6, maxStep * strength);
+        }
+      }
+
+      frameId = window.requestAnimationFrame(autoScroll);
+    }
+
+    window.addEventListener("pointermove", updatePointerX, { passive: true });
+    window.addEventListener("touchmove", updateTouchX, { passive: true });
+    frameId = window.requestAnimationFrame(autoScroll);
+
+    return () => {
+      window.removeEventListener("pointermove", updatePointerX);
+      window.removeEventListener("touchmove", updateTouchX);
+      window.cancelAnimationFrame(frameId);
+      dragPointerXRef.current = null;
+    };
+  }, [activeClientId]);
 
   const columnAwareCollisionDetection = useMemo<CollisionDetection>(
     () =>
@@ -169,6 +220,7 @@ export function KanbanBoard() {
   function clearDragState() {
     setActiveClientId(null);
     setDragPreview(null);
+    dragPointerXRef.current = null;
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -236,8 +288,8 @@ export function KanbanBoard() {
   }
 
   return (
-    <section className="board-dots min-h-[680px] rounded-[2rem] border border-guhr-border/75 p-4 shadow-inner">
-      <div className="mb-3 flex justify-end">
+    <section className="board-dots min-h-[610px] overflow-hidden rounded-[1.5rem] border border-guhr-border/75 p-2.5 shadow-inner sm:rounded-[2rem] sm:p-4 md:min-h-[680px]">
+      <div className="mb-3 hidden justify-end md:flex">
         <div className="inline-flex items-center gap-1 rounded-full border border-guhr-border bg-white/88 p-1 shadow-card backdrop-blur">
           <button
             type="button"
@@ -278,14 +330,19 @@ export function KanbanBoard() {
         onDragEnd={handleDragEnd}
         onDragCancel={clearDragState}
       >
-        <div className="scrollbar-soft overflow-x-auto pb-4">
+        <div
+          ref={scrollContainerRef}
+          className={cn(
+            "scrollbar-soft -mx-1 overflow-x-auto overscroll-x-contain px-1 pb-3 max-md:scroll-px-1 md:mx-0 md:px-0 md:pb-4",
+            activeClientId ? "max-md:snap-none" : "max-md:snap-x max-md:snap-mandatory",
+          )}
+        >
           <div
-            className="flex gap-4 transition-transform duration-200 ease-out"
+            className="board-track flex gap-3 transition-transform duration-200 ease-out md:gap-4"
             style={{
-              transform: `scale(${zoom})`,
-              transformOrigin: "top left",
-              width: `${100 / zoom}%`,
-            }}
+              "--board-zoom": zoom,
+              "--board-width": `${100 / zoom}%`,
+            } as CSSProperties}
           >
             {boardColumns.map((column) => (
               <KanbanColumn

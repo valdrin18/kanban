@@ -18,79 +18,79 @@ export function FilterBar() {
     filters.search || filters.mandateType !== "all" || filters.teamMember !== "all" || filters.status !== "all";
 
   return (
-    <section className="flex flex-col gap-3 lg:flex-row lg:items-center">
-      <div className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-[1.35rem] border border-guhr-border/55 bg-white/90 px-4 shadow-card backdrop-blur transition focus-within:border-guhr-gold/45 focus-within:shadow-card">
-          <Search className="h-5 w-5 shrink-0 text-guhr-muted/65" />
-          <Input
-            className="h-11 border-0 bg-transparent px-0 text-sm shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
-            placeholder={t(language, "filters.searchPlaceholder")}
-            value={filters.search}
-            onChange={(event) => setFilters({ search: event.target.value })}
-          />
-        </div>
+    <section className="flex flex-col gap-2.5 lg:flex-row lg:items-center">
+      <div className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-[1.15rem] border border-guhr-border/55 bg-white/90 px-3.5 shadow-card backdrop-blur transition focus-within:border-guhr-gold/45 focus-within:shadow-card sm:min-h-12 sm:gap-3 sm:rounded-[1.35rem] sm:px-4">
+        <Search className="h-4 w-4 shrink-0 text-guhr-muted/65 sm:h-5 sm:w-5" />
+        <Input
+          className="h-10 border-0 bg-transparent px-0 text-sm shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 sm:h-11"
+          placeholder={t(language, "filters.searchPlaceholder")}
+          value={filters.search}
+          onChange={(event) => setFilters({ search: event.target.value })}
+        />
+      </div>
 
       <div className="grid gap-2 sm:grid-cols-3 lg:w-[720px]">
         <FilterSelect>
-            <Select
-              aria-label={t(language, "filters.mandateTypeLabel")}
-              className="h-12 appearance-none rounded-[1.1rem] border-guhr-border/55 bg-white/90 px-4 pr-10 text-sm shadow-card backdrop-blur focus:ring-guhr-gold/10"
-              value={filters.mandateType}
-              onChange={(event) =>
-                setFilters({ mandateType: event.target.value as "all" | MandateType })
-              }
-            >
-              <option value="all">{t(language, "filters.allMandateTypes")}</option>
-              {mandateTypes.map((type) => (
-                <option key={type.id} value={type.name}>
-                  {translateMandateType(type.name, language)}
-                </option>
-              ))}
-            </Select>
-          </FilterSelect>
+          <Select
+            aria-label={t(language, "filters.mandateTypeLabel")}
+            className="h-11 appearance-none rounded-[1rem] border-guhr-border/55 bg-white/90 px-3.5 pr-9 text-sm shadow-card backdrop-blur focus:ring-guhr-gold/10 sm:h-12 sm:rounded-[1.1rem] sm:px-4 sm:pr-10"
+            value={filters.mandateType}
+            onChange={(event) =>
+              setFilters({ mandateType: event.target.value as "all" | MandateType })
+            }
+          >
+            <option value="all">{t(language, "filters.allMandateTypes")}</option>
+            {mandateTypes.map((type) => (
+              <option key={type.id} value={type.name}>
+                {translateMandateType(type.name, language)}
+              </option>
+            ))}
+          </Select>
+        </FilterSelect>
 
         <FilterSelect>
-            <Select
-              aria-label={t(language, "filters.teamMemberLabel")}
-              className="h-12 appearance-none rounded-[1.1rem] border-guhr-border/55 bg-white/90 px-4 pr-10 text-sm shadow-card backdrop-blur focus:ring-guhr-gold/10"
-              value={filters.teamMember}
-              onChange={(event) =>
-                setFilters({ teamMember: event.target.value as "all" | TeamMember })
-              }
-            >
-              <option value="all">{t(language, "filters.allTeamMembers")}</option>
-              {teamMembers.map((member) => (
-                <option key={member.id} value={member.name}>
-                  {member.name}
-                </option>
-              ))}
-            </Select>
-          </FilterSelect>
+          <Select
+            aria-label={t(language, "filters.teamMemberLabel")}
+            className="h-11 appearance-none rounded-[1rem] border-guhr-border/55 bg-white/90 px-3.5 pr-9 text-sm shadow-card backdrop-blur focus:ring-guhr-gold/10 sm:h-12 sm:rounded-[1.1rem] sm:px-4 sm:pr-10"
+            value={filters.teamMember}
+            onChange={(event) =>
+              setFilters({ teamMember: event.target.value as "all" | TeamMember })
+            }
+          >
+            <option value="all">{t(language, "filters.allTeamMembers")}</option>
+            {teamMembers.map((member) => (
+              <option key={member.id} value={member.name}>
+                {member.name}
+              </option>
+            ))}
+          </Select>
+        </FilterSelect>
 
         <FilterSelect>
-            <Select
-              aria-label={t(language, "filters.statusLabel")}
-              className="h-12 appearance-none rounded-[1.1rem] border-guhr-border/55 bg-white/90 px-4 pr-10 text-sm shadow-card backdrop-blur focus:ring-guhr-gold/10"
-              value={filters.status}
-              onChange={(event) => setFilters({ status: event.target.value as "all" | StatusTag })}
-            >
-              <option value="all">{t(language, "filters.allStatuses")}</option>
-              {statusOptions.map((status) => (
-                <option key={status.value} value={status.value}>
-                  {translateStatusLabel(status, language).label}
-                </option>
-              ))}
-            </Select>
-          </FilterSelect>
-        </div>
+          <Select
+            aria-label={t(language, "filters.statusLabel")}
+            className="h-11 appearance-none rounded-[1rem] border-guhr-border/55 bg-white/90 px-3.5 pr-9 text-sm shadow-card backdrop-blur focus:ring-guhr-gold/10 sm:h-12 sm:rounded-[1.1rem] sm:px-4 sm:pr-10"
+            value={filters.status}
+            onChange={(event) => setFilters({ status: event.target.value as "all" | StatusTag })}
+          >
+            <option value="all">{t(language, "filters.allStatuses")}</option>
+            {statusOptions.map((status) => (
+              <option key={status.value} value={status.value}>
+                {translateStatusLabel(status, language).label}
+              </option>
+            ))}
+          </Select>
+        </FilterSelect>
+      </div>
 
       <button
-          type="button"
-          onClick={clearFilters}
-          disabled={!hasActiveFilters}
-        className="inline-flex h-12 items-center justify-center gap-2 rounded-[1.1rem] px-3 text-sm font-medium text-guhr-muted transition hover:bg-white/75 hover:text-guhr-text disabled:cursor-not-allowed disabled:opacity-45 lg:min-w-24"
-        >
+        type="button"
+        onClick={clearFilters}
+        disabled={!hasActiveFilters}
+        className="inline-flex h-10 items-center justify-center gap-2 rounded-[1rem] px-3 text-sm font-medium text-guhr-muted transition hover:bg-white/75 hover:text-guhr-text disabled:cursor-not-allowed disabled:opacity-45 sm:h-12 sm:rounded-[1.1rem] lg:min-w-24"
+      >
         {hasActiveFilters ? <X className="h-5 w-5" /> : <SlidersHorizontal className="h-5 w-5" />}
-          {t(language, "filters.clear")}
+        {t(language, "filters.clear")}
       </button>
     </section>
   );
@@ -104,7 +104,7 @@ function FilterSelect({ children }: FilterSelectProps) {
   return (
     <div className="relative">
       {children}
-      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-guhr-text/80" />
+      <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-guhr-text/80 sm:right-4" />
     </div>
   );
 }

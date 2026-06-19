@@ -168,11 +168,11 @@ export function AddClientDrawer() {
         onClick={closeAddClient}
       />
       <aside className="scrollbar-soft h-full w-full overflow-y-auto border-l border-guhr-border bg-guhr-background shadow-soft sm:max-w-[760px]">
-        <div className="sticky top-0 z-10 border-b border-guhr-border bg-guhr-background/92 px-5 py-4 backdrop-blur-2xl sm:px-7">
+        <div className="sticky top-0 z-10 border-b border-guhr-border bg-guhr-background/92 px-4 py-3 backdrop-blur-2xl sm:px-7 sm:py-4">
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium text-guhr-muted">{t(language, "add.addClientTo")}</p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-normal text-guhr-text">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-guhr-muted sm:text-sm">{t(language, "add.addClientTo")}</p>
+              <h2 className="mt-1 text-xl font-semibold tracking-normal text-guhr-text sm:text-2xl">
                 {translateColumnTitle(activeColumnId, getColumnTitle(activeColumnId, boardColumns), language)}
               </h2>
             </div>
@@ -182,8 +182,8 @@ export function AddClientDrawer() {
           </div>
         </div>
 
-        <form className="space-y-6 px-5 py-6 sm:px-7" onSubmit={handleSubmit}>
-          <section className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+        <form className="space-y-4 px-4 py-4 sm:space-y-6 sm:px-7 sm:py-6" onSubmit={handleSubmit}>
+          <section className="grid gap-x-8 gap-y-4 sm:grid-cols-2 sm:gap-y-6">
             <FormField icon={UserRound} label={t(language, "drawer.clientName")}>
               <Input
                 className={embeddedFieldClassName}
@@ -263,10 +263,10 @@ export function AddClientDrawer() {
             </FormField>
           </section>
 
-          <section className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-guhr-text">{t(language, "drawer.notes")}</h3>
+          <section className="rounded-[1.35rem] border border-guhr-border bg-white/78 p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
+            <h3 className="text-base font-semibold text-guhr-text sm:text-lg">{t(language, "drawer.notes")}</h3>
             <Textarea
-              className="mt-4 min-h-40 bg-white"
+              className="mt-3 min-h-32 bg-white sm:mt-4 sm:min-h-40"
               value={form.notes}
               onChange={(event) => update("notes", event.target.value)}
               placeholder={t(language, "drawer.notesPlaceholder")}
@@ -281,11 +281,11 @@ export function AddClientDrawer() {
             onToggle={toggleChecklistItem}
           />
 
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Button variant="ghost" onClick={closeAddClient}>
+          <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end sm:gap-3">
+            <Button className="w-full sm:w-auto" variant="ghost" onClick={closeAddClient}>
               {t(language, "add.cancel")}
             </Button>
-            <Button type="submit" variant="primary" disabled={isSaving}>
+            <Button className="w-full sm:w-auto" type="submit" variant="primary" disabled={isSaving}>
               <Plus className="h-4 w-4" />
               {isSaving ? t(language, "add.adding") : t(language, "add.addClient")}
             </Button>
