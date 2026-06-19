@@ -11,6 +11,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { Minus, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { boardColumns } from "../../data/board";
 import { useFilteredClients } from "../../hooks/useFilteredClients";
@@ -24,6 +25,8 @@ interface DragPreview {
   targetStage: ColumnId;
   targetIndex: number;
 }
+
+const zoomLevels = [0.75, 0.85, 1] as const;
 
 function getIntersectionArea(
   entry: { top: number; left: number; width: number; height: number },
@@ -42,6 +45,8 @@ export function KanbanBoard() {
   const moveClient = useBoardStore((state) => state.moveClient);
   const [activeClientId, setActiveClientId] = useState<string | null>(null);
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
+  const [zoomIndex, setZoomIndex] = useState(2);
+  const zoom = zoomLevels[zoomIndex];
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -219,8 +224,49 @@ export function KanbanBoard() {
     clearDragState();
   }
 
+  function zoomOut() {
+    setZoomIndex((current) => Math.max(0, current - 1));
+  }
+
+  function zoomIn() {
+    setZoomIndex((current) => Math.min(zoomLevels.length - 1, current + 1));
+  }
+
   return (
     <section className="board-dots min-h-[680px] rounded-[2rem] border border-guhr-border/75 p-4 shadow-inner">
+      <div className="mb-3 flex justify-end">
+        <div className="inline-flex items-center gap-1 rounded-full border border-guhr-border bg-white/88 p-1 shadow-card backdrop-blur">
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-guhr-muted transition hover:bg-guhr-background hover:text-guhr-text disabled:opacity-35"
+            onClick={zoomOut}
+            disabled={zoomIndex === 0}
+            aria-label="Zoom out board"
+            title="Zoom out"
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            className="min-w-14 rounded-full px-2.5 py-1 text-xs font-semibold text-guhr-text transition hover:bg-guhr-background"
+            onClick={() => setZoomIndex(2)}
+            aria-label="Reset board zoom"
+            title="Reset zoom"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-guhr-muted transition hover:bg-guhr-background hover:text-guhr-text disabled:opacity-35"
+            onClick={zoomIn}
+            disabled={zoomIndex === zoomLevels.length - 1}
+            aria-label="Zoom in board"
+            title="Zoom in"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
       <DndContext
         sensors={sensors}
         collisionDetection={columnAwareCollisionDetection}
@@ -229,20 +275,38 @@ export function KanbanBoard() {
         onDragEnd={handleDragEnd}
         onDragCancel={clearDragState}
       >
-        <div className="scrollbar-soft flex gap-4 overflow-x-auto pb-4">
-          {boardColumns.map((column) => (
-            <KanbanColumn
-              column={column}
-              clients={clientsByColumn[column.id]}
-              placeholderIndex={
-                dragPreview?.targetStage === column.id ? dragPreview.targetIndex : null
-              }
-              key={column.id}
-            />
-          ))}
+        <div className="scrollbar-soft overflow-x-auto pb-4">
+          <div
+            className="flex gap-4 transition-transform duration-200 ease-out"
+            style={{
+              transform: `scale(${zoom})`,
+              transformOrigin: "top left",
+              width: `${100 / zoom}%`,
+            }}
+          >
+            {boardColumns.map((column) => (
+              <KanbanColumn
+                column={column}
+                clients={clientsByColumn[column.id]}
+                placeholderIndex={
+                  dragPreview?.targetStage === column.id ? dragPreview.targetIndex : null
+                }
+                key={column.id}
+              />
+            ))}
+          </div>
         </div>
         <DragOverlay>
-          {activeClient ? <ClientCardOverlay client={activeClient} /> : null}
+          {activeClient ? (
+            <div
+              style={{
+                transform: `scale(${zoom})`,
+                transformOrigin: "top left",
+              }}
+            >
+              <ClientCardOverlay client={activeClient} />
+            </div>
+          ) : null}
         </DragOverlay>
       </DndContext>
     </section>
