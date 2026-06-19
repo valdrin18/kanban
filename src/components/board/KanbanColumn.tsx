@@ -1,6 +1,7 @@
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
+import { Fragment } from "react";
 import { boardColumns } from "../../data/board";
 import { cn } from "../../lib/utils";
 import { useBoardStore } from "../../store/useBoardStore";
@@ -11,18 +12,22 @@ import { Button } from "../ui/Button";
 interface KanbanColumnProps {
   column: BoardColumn;
   clients: ClientCardType[];
+  placeholderIndex?: number | null;
 }
 
-export function KanbanColumn({ column, clients }: KanbanColumnProps) {
+export function KanbanColumn({ column, clients, placeholderIndex = null }: KanbanColumnProps) {
   const openAddClient = useBoardStore((state) => state.openAddClient);
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const columnIndex = boardColumns.findIndex((item) => item.id === column.id) + 1;
+  const normalizedPlaceholderIndex =
+    placeholderIndex === null ? null : Math.min(Math.max(placeholderIndex, 0), clients.length);
+  const displayCount = clients.length + (normalizedPlaceholderIndex === null ? 0 : 1);
 
   return (
     <section
       ref={setNodeRef}
       className={cn(
-        "flex h-full min-h-[620px] w-[318px] shrink-0 flex-col rounded-[1.9rem] border border-guhr-border bg-white/52 p-3 shadow-sm backdrop-blur transition duration-200",
+        "flex min-h-[245px] w-[318px] shrink-0 flex-col self-start rounded-[1.9rem] border border-guhr-border bg-white/58 p-3 shadow-sm backdrop-blur transition duration-200",
         isOver && "border-guhr-gold/60 bg-white/80 shadow-card",
       )}
     >
@@ -42,7 +47,7 @@ export function KanbanColumn({ column, clients }: KanbanColumnProps) {
             </p>
           </div>
           <span className="rounded-full bg-guhr-background px-2.5 py-1 text-xs font-semibold text-guhr-muted">
-            {clients.length}
+            {displayCount}
           </span>
         </div>
         <Button
@@ -57,18 +62,29 @@ export function KanbanColumn({ column, clients }: KanbanColumnProps) {
       </div>
 
       <SortableContext items={clients.map((client) => client.id)} strategy={verticalListSortingStrategy}>
-        <div className="scrollbar-soft flex flex-1 flex-col gap-3 overflow-y-auto px-1 pb-1">
-          {clients.map((client) => (
-            <ClientCard client={client} key={client.id} />
+        <div className="flex flex-col gap-3 px-2 pb-2 pt-4">
+          {clients.map((client, index) => (
+            <Fragment key={client.id}>
+              {normalizedPlaceholderIndex === index && <DropPlaceholder />}
+              <ClientCard client={client} />
+            </Fragment>
           ))}
 
-          {clients.length === 0 && (
-            <div className="flex flex-1 items-center justify-center rounded-[1.45rem] border border-dashed border-guhr-border bg-white/38 p-5 text-center text-sm leading-6 text-guhr-muted">
+          {normalizedPlaceholderIndex === clients.length && <DropPlaceholder />}
+
+          {clients.length === 0 && normalizedPlaceholderIndex === null && (
+            <div className="flex min-h-36 items-center justify-center rounded-[1.45rem] border border-dashed border-guhr-border bg-white/38 p-5 text-center text-sm leading-6 text-guhr-muted">
               Drop a client here or add a new onboarding card.
             </div>
           )}
         </div>
       </SortableContext>
     </section>
+  );
+}
+
+function DropPlaceholder() {
+  return (
+    <div className="min-h-[310px] rounded-[1.35rem] bg-white/70" />
   );
 }

@@ -1,5 +1,6 @@
 import { CSS } from "@dnd-kit/utilities";
 import { useSortable } from "@dnd-kit/sortable";
+import type { CSSProperties, ReactNode } from "react";
 import {
   AlertTriangle,
   Briefcase,
@@ -20,14 +21,10 @@ import { Badge } from "../ui/Badge";
 
 interface ClientCardProps {
   client: ClientCardType;
-  isOverlay?: boolean;
 }
 
-export function ClientCard({ client, isOverlay = false }: ClientCardProps) {
+export function ClientCard({ client }: ClientCardProps) {
   const openClient = useBoardStore((state) => state.openClient);
-  const status = getStatusMeta(client.status);
-  const daysInStage = daysSince(client.stageUpdatedAt);
-  const needsFollowUp = isFollowUpRecommended(client);
   const {
     attributes,
     listeners,
@@ -36,8 +33,7 @@ export function ClientCard({ client, isOverlay = false }: ClientCardProps) {
     transition,
     isDragging,
   } = useSortable({
-    id: isOverlay ? `${client.id}-overlay` : client.id,
-    disabled: isOverlay,
+    id: client.id,
   });
 
   const style = {
@@ -45,15 +41,80 @@ export function ClientCard({ client, isOverlay = false }: ClientCardProps) {
     transition,
   };
 
+  const dragHandle = (
+    <button
+      className="mt-0.5 rounded-xl p-1.5 text-guhr-muted opacity-70 transition hover:bg-guhr-background hover:text-guhr-text group-hover:opacity-100"
+      aria-label={`Drag ${client.name}`}
+      onClick={(event) => event.stopPropagation()}
+      {...attributes}
+      {...listeners}
+    >
+      <GripVertical className="h-4 w-4" />
+    </button>
+  );
+
+  return (
+    <ClientCardArticle
+      client={client}
+      dragHandle={dragHandle}
+      isDragging={isDragging}
+      onClick={() => openClient(client.id)}
+      setNodeRef={setNodeRef}
+      style={style}
+    />
+  );
+}
+
+interface ClientCardOverlayProps {
+  client: ClientCardType;
+}
+
+export function ClientCardOverlay({ client }: ClientCardOverlayProps) {
+  return (
+    <ClientCardArticle
+      client={client}
+      dragHandle={
+        <span className="mt-0.5 rounded-xl p-1.5 text-guhr-muted">
+          <GripVertical className="h-4 w-4" />
+        </span>
+      }
+      isOverlay
+    />
+  );
+}
+
+interface ClientCardArticleProps {
+  client: ClientCardType;
+  dragHandle: ReactNode;
+  isDragging?: boolean;
+  isOverlay?: boolean;
+  onClick?: () => void;
+  setNodeRef?: (node: HTMLElement | null) => void;
+  style?: CSSProperties;
+}
+
+function ClientCardArticle({
+  client,
+  dragHandle,
+  isDragging = false,
+  isOverlay = false,
+  onClick,
+  setNodeRef,
+  style,
+}: ClientCardArticleProps) {
+  const status = getStatusMeta(client.status);
+  const daysInStage = daysSince(client.stageUpdatedAt);
+  const needsFollowUp = isFollowUpRecommended(client);
+
   return (
     <article
       ref={setNodeRef}
       style={style}
-      onClick={() => openClient(client.id)}
+      onClick={onClick}
       className={cn(
         "group rounded-[1.35rem] border border-guhr-border bg-white/92 p-4 shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:border-guhr-gold/35 hover:shadow-card",
-        isDragging && "opacity-35",
-        isOverlay && "w-[300px] rotate-[1deg] shadow-soft",
+        isDragging && "opacity-0",
+        isOverlay && "w-[300px] rotate-[1deg] cursor-grabbing opacity-90 shadow-soft",
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -81,15 +142,7 @@ export function ClientCard({ client, isOverlay = false }: ClientCardProps) {
             </Badge>
           </div>
         </div>
-        <button
-          className="mt-0.5 rounded-xl p-1.5 text-guhr-muted opacity-70 transition hover:bg-guhr-background hover:text-guhr-text group-hover:opacity-100"
-          aria-label={`Drag ${client.name}`}
-          onClick={(event) => event.stopPropagation()}
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
+        {dragHandle}
       </div>
 
       <div className="mt-4 space-y-2.5 text-sm text-guhr-muted">

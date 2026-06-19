@@ -30,6 +30,13 @@ body {
     #f8f7f3;
 }
 
+.board-dots {
+  background-color: #ffffff;
+  background-image: radial-gradient(circle, #d0b578 1.15px, transparent 1.25px);
+  background-position: 0 0;
+  background-size: 24px 24px;
+}
+
 button,
 input,
 select,
