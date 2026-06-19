@@ -4,6 +4,7 @@ import { boardColumns, createChecklist, getColumnTitle, seedClients } from "../d
 import type {
   BoardFilters,
   ClientCard,
+  ChecklistItem,
   ColumnId,
   NewClientInput,
   StatusTag,
@@ -21,8 +22,12 @@ interface BoardState {
   openAddClient: (columnId: ColumnId) => void;
   closeAddClient: () => void;
   addClient: (columnId: ColumnId, input: NewClientInput) => void;
+  updateClient: (clientId: string, updates: Partial<ClientCard>) => void;
   moveClient: (clientId: string, targetStage: ColumnId, targetIndex: number) => void;
   toggleChecklistItem: (clientId: string, itemId: string) => void;
+  updateChecklistItem: (clientId: string, itemId: string, label: string) => void;
+  addChecklistItem: (clientId: string, label: string) => void;
+  removeChecklistItem: (clientId: string, itemId: string) => void;
   addGeneratedActivity: (clientId: string) => void;
 }
 
@@ -56,6 +61,11 @@ function defaultStatusForColumn(columnId: ColumnId): StatusTag {
   return statusByColumn[columnId];
 }
 
+function checklistItemId(label: string) {
+  const normalized = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
+  return `${normalized || "checklist-item"}-${Date.now().toString(36)}`;
+}
+
 export const useBoardStore = create<BoardState>()(
   persist(
     (set, get) => ({
@@ -84,15 +94,15 @@ export const useBoardStore = create<BoardState>()(
           phone: input.phone,
           mandateTypes: [input.mandateType],
           assignedTo: input.assignedTo,
-          leadSource: "Manual entry",
+          leadSource: input.leadSource,
           dateAdded: now,
           currentStage: columnId,
           stageUpdatedAt: now,
-          status: input.status,
+          status: defaultStatusForColumn(columnId),
           priority: input.priority,
           notes: input.notes,
           nextStep: input.notes || "Review onboarding context and prepare next step.",
-          checklist: createChecklist([input.mandateType]),
+          checklist: input.checklist.length > 0 ? input.checklist : createChecklist([input.mandateType]),
           activity: [
             {
               id: makeId("activity"),
@@ -107,6 +117,42 @@ export const useBoardStore = create<BoardState>()(
         set((state) => ({
           clients: [...state.clients, newClient],
           addClientColumnId: null,
+        }));
+      },
+      updateClient: (clientId, updates) => {
+        const now = new Date().toISOString();
+        set((state) => ({
+          clients: state.clients.map((client) => {
+            if (client.id !== clientId) return client;
+
+            const stageChanged =
+              updates.currentStage !== undefined && updates.currentStage !== client.currentStage;
+            const nextStage = updates.currentStage ?? client.currentStage;
+            const nextUpdates: Partial<ClientCard> = {
+              ...updates,
+              stageUpdatedAt: stageChanged ? now : (updates.stageUpdatedAt ?? client.stageUpdatedAt),
+            };
+            if (stageChanged && updates.status === undefined) {
+              nextUpdates.status = defaultStatusForColumn(nextStage);
+            }
+
+            return {
+              ...client,
+              ...nextUpdates,
+              activity: stageChanged
+                ? [
+                    {
+                      id: makeId("activity"),
+                      timestamp: now,
+                      title: "Client details updated",
+                      detail: `Stage changed to ${getColumnTitle(nextStage)}.`,
+                      type: "moved",
+                    },
+                    ...client.activity,
+                  ]
+                : client.activity,
+            };
+          }),
         }));
       },
       moveClient: (clientId, targetStage, targetIndex) => {
@@ -183,6 +229,56 @@ export const useBoardStore = create<BoardState>()(
                 : client.activity,
             };
           }),
+        }));
+      },
+      updateChecklistItem: (clientId, itemId, label) => {
+        const trimmedLabel = label.trim();
+        if (!trimmedLabel) return;
+
+        set((state) => ({
+          clients: state.clients.map((client) =>
+            client.id === clientId
+              ? {
+                  ...client,
+                  checklist: client.checklist.map((item) =>
+                    item.id === itemId ? { ...item, label: trimmedLabel } : item,
+                  ),
+                }
+              : client,
+          ),
+        }));
+      },
+      addChecklistItem: (clientId, label) => {
+        const trimmedLabel = label.trim();
+        if (!trimmedLabel) return;
+
+        const newItem: ChecklistItem = {
+          id: checklistItemId(trimmedLabel),
+          label: trimmedLabel,
+          completed: false,
+        };
+
+        set((state) => ({
+          clients: state.clients.map((client) =>
+            client.id === clientId
+              ? {
+                  ...client,
+                  checklist: [...client.checklist, newItem],
+                }
+              : client,
+          ),
+        }));
+      },
+      removeChecklistItem: (clientId, itemId) => {
+        set((state) => ({
+          clients: state.clients.map((client) =>
+            client.id === clientId
+              ? {
+                  ...client,
+                  checklist: client.checklist.filter((item) => item.id !== itemId),
+                }
+              : client,
+          ),
         }));
       },
       addGeneratedActivity: (clientId) => {

@@ -92,7 +92,8 @@ export interface NewClientInput {
   phone: string;
   mandateType: MandateType;
   assignedTo: TeamMember;
-  status: StatusTag;
+  leadSource: string;
   priority: Priority;
   notes: string;
+  checklist: ChecklistItem[];
 }

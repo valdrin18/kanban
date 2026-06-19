@@ -3,22 +3,73 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
+  Clipboard,
+  Copy,
   FileText,
   Mail,
+  PencilLine,
   Phone,
   Send,
-  Sparkles,
   UserRound,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { getColumnTitle, getStatusMeta } from "../../data/board";
+import { useEffect, useState } from "react";
+import {
+  boardColumns,
+  getStatusMeta,
+  leadSourceOptions,
+  mandateTypes,
+  teamMembers,
+} from "../../data/board";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useBoardStore } from "../../store/useBoardStore";
-import { formatDate, formatDateTime } from "../../utils/dates";
+import type { ClientCard, ColumnId, MandateType, TeamMember } from "../../types";
+import { formatDateTime } from "../../utils/dates";
 import { generateFollowUp } from "../../utils/followUp";
-import { getRecommendedAction, isFollowUpRecommended } from "../../utils/recommendations";
+import { isFollowUpRecommended } from "../../utils/recommendations";
+import { ChecklistEditor } from "./ChecklistEditor";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
+import { FormField, embeddedFieldClassName, embeddedSelectClassName } from "../ui/FormField";
+import { Input } from "../ui/Input";
+import { Select } from "../ui/Select";
+import { Textarea } from "../ui/Textarea";
+
+interface ClientDraft {
+  name: string;
+  email: string;
+  phone: string;
+  mandateType: MandateType;
+  assignedTo: TeamMember;
+  leadSource: string;
+  dateAdded: string;
+  currentStage: ColumnId;
+  notes: string;
+}
+
+function toInputDate(value: string) {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function inputDateToIso(value: string, fallback: string) {
+  if (!value) return fallback;
+  const date = new Date(`${value}T09:00:00`);
+  return Number.isNaN(date.getTime()) ? fallback : date.toISOString();
+}
+
+function draftFromClient(client: ClientCard): ClientDraft {
+  return {
+    name: client.name,
+    email: client.email,
+    phone: client.phone,
+    mandateType: client.mandateTypes[0] ?? "GmbH",
+    assignedTo: client.assignedTo,
+    leadSource: client.leadSource,
+    dateAdded: toInputDate(client.dateAdded),
+    currentStage: client.currentStage,
+    notes: client.notes || client.nextStep,
+  };
+}
 
 export function ClientDetailDrawer() {
   const selectedClientId = useBoardStore((state) => state.selectedClientId);
@@ -26,34 +77,67 @@ export function ClientDetailDrawer() {
     state.clients.find((item) => item.id === state.selectedClientId),
   );
   const closeClient = useBoardStore((state) => state.closeClient);
+  const updateClient = useBoardStore((state) => state.updateClient);
   const toggleChecklistItem = useBoardStore((state) => state.toggleChecklistItem);
+  const updateChecklistItem = useBoardStore((state) => state.updateChecklistItem);
+  const addChecklistItem = useBoardStore((state) => state.addChecklistItem);
+  const removeChecklistItem = useBoardStore((state) => state.removeChecklistItem);
   const addGeneratedActivity = useBoardStore((state) => state.addGeneratedActivity);
+  const [draft, setDraft] = useState<ClientDraft | null>(null);
   const [generatedMessage, setGeneratedMessage] = useState("");
+  const [copied, setCopied] = useState(false);
+  useBodyScrollLock(Boolean(selectedClientId));
 
   useEffect(() => {
+    if (client) {
+      setDraft(draftFromClient(client));
+    }
     setGeneratedMessage("");
+    setCopied(false);
   }, [selectedClientId]);
 
-  const checklistProgress = useMemo(() => {
-    if (!client) return { completed: 0, total: 0, percent: 0 };
-    const completed = client.checklist.filter((item) => item.completed).length;
-    const total = client.checklist.length;
-    return {
-      completed,
-      total,
-      percent: total === 0 ? 0 : Math.round((completed / total) * 100),
-    };
-  }, [client]);
-
-  if (!client) return null;
+  if (!client || !draft) return null;
 
   const status = getStatusMeta(client.status);
   const needsFollowUp = isFollowUpRecommended(client);
+  const [subjectLine, ...messageLines] = generatedMessage.split("\n");
+  const messageSubject = subjectLine?.replace(/^Subject:\s*/, "") ?? "";
+  const messageBody = messageLines.join("\n").trim();
+
+  function updateDraft<K extends keyof ClientDraft>(key: K, value: ClientDraft[K]) {
+    setDraft((current) => (current ? { ...current, [key]: value } : current));
+  }
+
+  function handleSave() {
+    if (!client || !draft) return;
+    const notes = draft.notes.trim();
+
+    updateClient(client.id, {
+      name: draft.name.trim() || client.name,
+      email: draft.email.trim(),
+      phone: draft.phone.trim(),
+      mandateTypes: [draft.mandateType],
+      assignedTo: draft.assignedTo,
+      leadSource: draft.leadSource,
+      dateAdded: inputDateToIso(draft.dateAdded, client.dateAdded),
+      currentStage: draft.currentStage,
+      notes,
+      nextStep: notes || "Review onboarding context and prepare next step.",
+    });
+  }
 
   function handleGenerate() {
     if (!client) return;
     setGeneratedMessage(generateFollowUp(client));
     addGeneratedActivity(client.id);
+    setCopied(false);
+  }
+
+  async function handleCopy() {
+    if (!generatedMessage) return;
+
+    await navigator.clipboard?.writeText(generatedMessage);
+    setCopied(true);
   }
 
   return (
@@ -63,8 +147,8 @@ export function ClientDetailDrawer() {
         aria-label="Close client detail"
         onClick={closeClient}
       />
-      <aside className="scrollbar-soft h-full w-full overflow-y-auto border-l border-guhr-border bg-guhr-background shadow-soft sm:max-w-[620px]">
-        <div className="sticky top-0 z-10 border-b border-guhr-border bg-guhr-background/92 px-5 py-4 backdrop-blur-2xl sm:px-6">
+      <aside className="scrollbar-soft h-full w-full overflow-y-auto border-l border-guhr-border bg-guhr-background shadow-soft sm:max-w-[760px]">
+        <div className="sticky top-0 z-10 border-b border-guhr-border bg-guhr-background/92 px-5 py-4 backdrop-blur-2xl sm:px-7">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="flex flex-wrap gap-2">
@@ -77,109 +161,166 @@ export function ClientDetailDrawer() {
               <h2 className="mt-3 text-2xl font-semibold tracking-normal text-guhr-text">
                 {client.name}
               </h2>
-              <p className="mt-1 text-sm text-guhr-muted">
-                {getColumnTitle(client.currentStage)}
-              </p>
             </div>
-            <Button size="icon" variant="ghost" onClick={closeClient} aria-label="Close drawer">
-              <X className="h-5 w-5" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="primary" onClick={handleSave}>
+                <CheckCircle2 className="h-4 w-4" />
+                Save
+              </Button>
+              <Button size="icon" variant="ghost" onClick={closeClient} aria-label="Close drawer">
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-5 px-5 py-5 sm:px-6">
-          <section className="grid gap-3 sm:grid-cols-2">
-            <InfoTile icon={Mail} label="Email" value={client.email} />
-            <InfoTile icon={Phone} label="Phone" value={client.phone} />
-            <InfoTile icon={Briefcase} label="Mandate" value={client.mandateTypes.join(" / ")} />
-            <InfoTile icon={UserRound} label="Assigned" value={client.assignedTo} />
-            <InfoTile icon={CalendarDays} label="Date added" value={formatDate(client.dateAdded)} />
-            <InfoTile icon={FileText} label="Lead source" value={client.leadSource} />
-          </section>
-
-          <section className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-4 shadow-sm">
-            <div className="flex items-start gap-3">
-              <span className="rounded-2xl bg-guhr-goldSoft p-2.5 text-guhr-gold">
-                <Sparkles className="h-5 w-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-guhr-text">Recommended next action</h3>
-                <p className="mt-1 text-sm leading-6 text-guhr-muted">
-                  {getRecommendedAction(client.currentStage)}
-                </p>
-                <div className="mt-3 rounded-[1.1rem] bg-guhr-background px-3 py-2 text-sm leading-6 text-guhr-text">
-                  {client.nextStep}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-4 shadow-sm">
-            <h3 className="font-semibold text-guhr-text">Notes / next steps</h3>
-            <p className="mt-2 text-sm leading-6 text-guhr-muted">{client.notes}</p>
-          </section>
-
-          <section className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h3 className="font-semibold text-guhr-text">Tax onboarding checklist</h3>
-                <p className="mt-1 text-sm text-guhr-muted">
-                  {checklistProgress.completed} of {checklistProgress.total} completed
-                </p>
-              </div>
-              <span className="rounded-full bg-guhr-background px-3 py-1 text-sm font-semibold text-guhr-muted">
-                {checklistProgress.percent}%
-              </span>
-            </div>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-guhr-background">
-              <div
-                className="h-full rounded-full bg-guhr-gold transition-all"
-                style={{ width: `${checklistProgress.percent}%` }}
+        <div className="space-y-6 px-5 py-6 sm:px-7">
+          <section className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+            <FormField icon={UserRound} label="Client name">
+              <Input
+                className={embeddedFieldClassName}
+                value={draft.name}
+                onChange={(event) => updateDraft("name", event.target.value)}
               />
-            </div>
-            <div className="mt-4 space-y-2">
-              {client.checklist.map((item) => (
-                <label
-                  className="flex cursor-pointer items-center gap-3 rounded-2xl border border-guhr-border/70 bg-white/68 px-3 py-2.5 text-sm text-guhr-text transition hover:border-guhr-gold/40 hover:bg-white"
-                  key={item.id}
-                >
-                  <input
-                    type="checkbox"
-                    checked={item.completed}
-                    onChange={() => toggleChecklistItem(client.id, item.id)}
-                    className="h-4 w-4 rounded border-guhr-border accent-guhr-gold"
-                  />
-                  <span className={item.completed ? "text-guhr-muted line-through" : ""}>
-                    {item.label}
-                  </span>
-                </label>
-              ))}
-            </div>
+            </FormField>
+            <FormField icon={Mail} label="Email">
+              <Input
+                className={embeddedFieldClassName}
+                type="email"
+                value={draft.email}
+                onChange={(event) => updateDraft("email", event.target.value)}
+              />
+            </FormField>
+            <FormField icon={Phone} label="Phone">
+              <Input
+                className={embeddedFieldClassName}
+                value={draft.phone}
+                onChange={(event) => updateDraft("phone", event.target.value)}
+              />
+            </FormField>
+            <FormField icon={Briefcase} label="Mandate" select>
+              <Select
+                className={embeddedSelectClassName}
+                value={draft.mandateType}
+                onChange={(event) => updateDraft("mandateType", event.target.value as MandateType)}
+              >
+                {mandateTypes.map((type) => (
+                  <option value={type} key={type}>
+                    {type}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField icon={UserRound} label="Assigned" select>
+              <Select
+                className={embeddedSelectClassName}
+                value={draft.assignedTo}
+                onChange={(event) => updateDraft("assignedTo", event.target.value as TeamMember)}
+              >
+                {teamMembers.map((member) => (
+                  <option value={member} key={member}>
+                    {member}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField icon={CalendarDays} label="Date added">
+              <Input
+                className={embeddedFieldClassName}
+                type="date"
+                value={draft.dateAdded}
+                onChange={(event) => updateDraft("dateAdded", event.target.value)}
+              />
+            </FormField>
+            <FormField icon={FileText} label="Lead source" select>
+              <Select
+                className={embeddedSelectClassName}
+                value={draft.leadSource}
+                onChange={(event) => updateDraft("leadSource", event.target.value)}
+              >
+                {leadSourceOptions.map((source) => (
+                  <option value={source} key={source}>
+                    {source}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField icon={Clock3} label="Current stage" select>
+              <Select
+                className={embeddedSelectClassName}
+                value={draft.currentStage}
+                onChange={(event) => updateDraft("currentStage", event.target.value as ColumnId)}
+              >
+                {boardColumns.map((column) => (
+                  <option value={column.id} key={column.id}>
+                    {column.title}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
           </section>
 
-          <section className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-4 shadow-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <section className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-5 shadow-sm">
+            <h3 className="text-lg font-semibold text-guhr-text">Notes / next steps</h3>
+            <Textarea
+              className="mt-4 min-h-40 bg-white"
+              value={draft.notes}
+              onChange={(event) => updateDraft("notes", event.target.value)}
+              placeholder="Internal notes and the next useful action."
+            />
+          </section>
+
+          <ChecklistEditor
+            checklist={client.checklist}
+            onAdd={(label) => addChecklistItem(client.id, label)}
+            onRemove={(itemId) => removeChecklistItem(client.id, itemId)}
+            onRename={(itemId, label) => updateChecklistItem(client.id, itemId, label)}
+            onToggle={(itemId) => toggleChecklistItem(client.id, itemId)}
+          />
+
+          <section className="rounded-[1.75rem] border border-guhr-border bg-white/82 p-5 shadow-card">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h3 className="font-semibold text-guhr-text">Follow-up generator</h3>
-                <p className="mt-1 text-sm leading-6 text-guhr-muted">
+                <h3 className="text-2xl font-semibold tracking-normal text-guhr-text">
+                  Follow-up generator
+                </h3>
+                <p className="mt-2 max-w-md text-sm leading-6 text-guhr-muted">
                   Creates a deterministic draft based on stage, missing items and next step.
                 </p>
               </div>
-              <Button variant="primary" onClick={handleGenerate}>
+              <Button variant="primary" className="h-11 rounded-2xl px-4 text-sm" onClick={handleGenerate}>
                 <Send className="h-4 w-4" />
                 Generate Follow-Up
               </Button>
             </div>
             {generatedMessage && (
-              <pre className="scrollbar-soft mt-4 max-h-80 overflow-auto whitespace-pre-wrap rounded-[1.35rem] border border-guhr-border bg-guhr-background p-4 text-sm leading-6 text-guhr-text">
-                {generatedMessage}
-              </pre>
+              <div className="mt-5 rounded-[1.5rem] border border-guhr-border bg-white p-4">
+                <div className="flex items-center justify-between gap-3 border-b border-guhr-border pb-3">
+                  <div className="flex items-center gap-2 text-guhr-muted">
+                    <PencilLine className="h-4 w-4 text-guhr-gold" />
+                    <span className="text-sm font-medium">Draft email</span>
+                  </div>
+                  <Button variant="secondary" size="sm" onClick={handleCopy}>
+                    <Copy className="h-4 w-4" />
+                    {copied ? "Copied" : "Copy"}
+                  </Button>
+                </div>
+                <div className="scrollbar-soft mt-4 max-h-80 overflow-auto text-sm leading-7 text-guhr-text">
+                  <p>
+                    <strong>Subject:</strong> {messageSubject}
+                  </p>
+                  <div className="mt-4 whitespace-pre-wrap">{messageBody}</div>
+                </div>
+              </div>
             )}
           </section>
 
           <section className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-4 shadow-sm">
-            <h3 className="font-semibold text-guhr-text">Activity timeline</h3>
-            <div className="mt-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Clipboard className="h-5 w-5 text-guhr-gold" />
+              <h3 className="font-semibold text-guhr-text">Activity timeline</h3>
+            </div>
+            <div className="scrollbar-soft mt-4 max-h-64 space-y-3 overflow-y-auto pr-2">
               {client.activity.map((activity) => (
                 <div className="flex gap-3" key={activity.id}>
                   <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-guhr-background text-guhr-gold">
@@ -206,28 +347,6 @@ export function ClientDetailDrawer() {
           </section>
         </div>
       </aside>
-    </div>
-  );
-}
-
-interface InfoTileProps {
-  icon: typeof Mail;
-  label: string;
-  value: string;
-}
-
-function InfoTile({ icon: Icon, label, value }: InfoTileProps) {
-  return (
-    <div className="rounded-[1.35rem] border border-guhr-border bg-white/78 p-3 shadow-sm">
-      <div className="flex items-start gap-3">
-        <span className="rounded-2xl bg-guhr-background p-2 text-guhr-gold">
-          <Icon className="h-4 w-4" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-normal text-guhr-muted">{label}</p>
-          <p className="mt-1 break-words text-sm font-medium leading-5 text-guhr-text">{value}</p>
-        </div>
-      </div>
     </div>
   );
 }

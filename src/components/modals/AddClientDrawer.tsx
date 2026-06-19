@@ -1,47 +1,62 @@
-import { Plus, X } from "lucide-react";
-import { type FormEvent, type ReactNode, useEffect, useState } from "react";
-import { getColumnTitle, mandateTypes, statusOptions, teamMembers } from "../../data/board";
+import {
+  Briefcase,
+  CalendarDays,
+  FileText,
+  Mail,
+  Phone,
+  Plus,
+  UserRound,
+  X,
+} from "lucide-react";
+import { type FormEvent, useEffect, useState } from "react";
+import {
+  createChecklist,
+  getColumnTitle,
+  leadSourceOptions,
+  mandateTypes,
+  teamMembers,
+} from "../../data/board";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useBoardStore } from "../../store/useBoardStore";
-import type { ColumnId, MandateType, NewClientInput, Priority, StatusTag, TeamMember } from "../../types";
+import type { ChecklistItem, MandateType, NewClientInput, Priority, TeamMember } from "../../types";
+import { ChecklistEditor } from "./ChecklistEditor";
 import { Button } from "../ui/Button";
+import { FormField, embeddedFieldClassName, embeddedSelectClassName } from "../ui/FormField";
 import { Input } from "../ui/Input";
 import { Select } from "../ui/Select";
 import { Textarea } from "../ui/Textarea";
 
-const statusByColumn: Record<ColumnId, StatusTag> = {
-  "new-inquiry": "new-lead",
-  "consultation-scheduled": "consultation-booked",
-  "qualified-fit": "qualified",
-  "documents-requested": "waiting-documents",
-  "documents-review": "internal-review",
-  "contract-sent": "awaiting-signature",
-  "signed-active": "active",
-  paused: "paused",
-};
+function checklistItemId(label: string) {
+  const normalized = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
+  return `${normalized || "checklist-item"}-${Date.now().toString(36)}`;
+}
 
-const initialForm: NewClientInput = {
-  name: "",
-  email: "",
-  phone: "",
-  mandateType: "GmbH",
-  assignedTo: "Sophie Weber",
-  status: "new-lead",
-  priority: "Normal",
-  notes: "",
-};
+function makeInitialForm(): NewClientInput {
+  const mandateType: MandateType = "GmbH";
+
+  return {
+    name: "",
+    email: "",
+    phone: "",
+    mandateType,
+    assignedTo: "Sophie Weber",
+    leadSource: "Manual entry",
+    priority: "Normal",
+    notes: "",
+    checklist: createChecklist([mandateType]),
+  };
+}
 
 export function AddClientDrawer() {
   const columnId = useBoardStore((state) => state.addClientColumnId);
   const addClient = useBoardStore((state) => state.addClient);
   const closeAddClient = useBoardStore((state) => state.closeAddClient);
-  const [form, setForm] = useState<NewClientInput>(initialForm);
+  const [form, setForm] = useState<NewClientInput>(makeInitialForm);
+  useBodyScrollLock(Boolean(columnId));
 
   useEffect(() => {
     if (!columnId) return;
-    setForm({
-      ...initialForm,
-      status: statusByColumn[columnId],
-    });
+    setForm(makeInitialForm());
   }, [columnId]);
 
   if (!columnId) return null;
@@ -51,15 +66,74 @@ export function AddClientDrawer() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function updateMandateType(mandateType: MandateType) {
+    setForm((current) => ({
+      ...current,
+      mandateType,
+      checklist: createChecklist([mandateType]),
+    }));
+  }
+
+  function addChecklistItem(label: string) {
+    const trimmedLabel = label.trim();
+    if (!trimmedLabel) return;
+
+    setForm((current) => ({
+      ...current,
+      checklist: [
+        ...current.checklist,
+        {
+          id: checklistItemId(trimmedLabel),
+          label: trimmedLabel,
+          completed: false,
+        },
+      ],
+    }));
+  }
+
+  function renameChecklistItem(itemId: string, label: string) {
+    const trimmedLabel = label.trim();
+    if (!trimmedLabel) return;
+
+    setForm((current) => ({
+      ...current,
+      checklist: current.checklist.map((item) =>
+        item.id === itemId ? { ...item, label: trimmedLabel } : item,
+      ),
+    }));
+  }
+
+  function removeChecklistItem(itemId: string) {
+    setForm((current) => ({
+      ...current,
+      checklist: current.checklist.filter((item) => item.id !== itemId),
+    }));
+  }
+
+  function toggleChecklistItem(itemId: string) {
+    setForm((current) => ({
+      ...current,
+      checklist: current.checklist.map((item) =>
+        item.id === itemId ? { ...item, completed: !item.completed } : item,
+      ),
+    }));
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!form.name.trim() || !form.email.trim()) return;
+
     addClient(activeColumnId, {
       ...form,
       name: form.name.trim(),
       email: form.email.trim(),
       phone: form.phone.trim(),
+      leadSource: form.leadSource.trim() || "Manual entry",
       notes: form.notes.trim() || "Prepare onboarding context and confirm next step.",
+      checklist: form.checklist.map((item): ChecklistItem => ({
+        ...item,
+        label: item.label.trim(),
+      })),
     });
   }
 
@@ -70,8 +144,8 @@ export function AddClientDrawer() {
         aria-label="Close add client"
         onClick={closeAddClient}
       />
-      <aside className="scrollbar-soft h-full w-full overflow-y-auto border-l border-guhr-border bg-guhr-background shadow-soft sm:max-w-[520px]">
-        <div className="sticky top-0 z-10 border-b border-guhr-border bg-guhr-background/92 px-5 py-4 backdrop-blur-2xl sm:px-6">
+      <aside className="scrollbar-soft h-full w-full overflow-y-auto border-l border-guhr-border bg-guhr-background shadow-soft sm:max-w-[760px]">
+        <div className="sticky top-0 z-10 border-b border-guhr-border bg-guhr-background/92 px-5 py-4 backdrop-blur-2xl sm:px-7">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-medium text-guhr-muted">Add client to</p>
@@ -85,98 +159,104 @@ export function AddClientDrawer() {
           </div>
         </div>
 
-        <form className="space-y-5 px-5 py-5 sm:px-6" onSubmit={handleSubmit}>
-          <div className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-4 shadow-sm">
-            <div className="grid gap-4">
-              <Field label="Client name">
-                <Input
-                  value={form.name}
-                  onChange={(event) => update("name", event.target.value)}
-                  placeholder="Example GmbH"
-                  required
-                />
-              </Field>
+        <form className="space-y-6 px-5 py-6 sm:px-7" onSubmit={handleSubmit}>
+          <section className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+            <FormField icon={UserRound} label="Client name">
+              <Input
+                className={embeddedFieldClassName}
+                value={form.name}
+                onChange={(event) => update("name", event.target.value)}
+                placeholder="Example GmbH"
+                required
+              />
+            </FormField>
+            <FormField icon={Mail} label="Email">
+              <Input
+                className={embeddedFieldClassName}
+                type="email"
+                value={form.email}
+                onChange={(event) => update("email", event.target.value)}
+                placeholder="client@example.de"
+                required
+              />
+            </FormField>
+            <FormField icon={Phone} label="Phone">
+              <Input
+                className={embeddedFieldClassName}
+                value={form.phone}
+                onChange={(event) => update("phone", event.target.value)}
+                placeholder="+49 30 ..."
+              />
+            </FormField>
+            <FormField icon={Briefcase} label="Mandate" select>
+              <Select
+                className={embeddedSelectClassName}
+                value={form.mandateType}
+                onChange={(event) => updateMandateType(event.target.value as MandateType)}
+              >
+                {mandateTypes.map((type) => (
+                  <option value={type} key={type}>
+                    {type}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField icon={UserRound} label="Assigned" select>
+              <Select
+                className={embeddedSelectClassName}
+                value={form.assignedTo}
+                onChange={(event) => update("assignedTo", event.target.value as TeamMember)}
+              >
+                {teamMembers.map((member) => (
+                  <option value={member} key={member}>
+                    {member}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField icon={CalendarDays} label="Priority" select>
+              <Select
+                className={embeddedSelectClassName}
+                value={form.priority}
+                onChange={(event) => update("priority", event.target.value as Priority)}
+              >
+                <option value="Low">Low</option>
+                <option value="Normal">Normal</option>
+                <option value="High">High</option>
+              </Select>
+            </FormField>
+            <FormField icon={FileText} label="Lead source" select>
+              <Select
+                className={embeddedSelectClassName}
+                value={form.leadSource}
+                onChange={(event) => update("leadSource", event.target.value)}
+              >
+                {leadSourceOptions.map((source) => (
+                  <option value={source} key={source}>
+                    {source}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          </section>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Email">
-                  <Input
-                    type="email"
-                    value={form.email}
-                    onChange={(event) => update("email", event.target.value)}
-                    placeholder="client@example.de"
-                    required
-                  />
-                </Field>
-                <Field label="Phone">
-                  <Input
-                    value={form.phone}
-                    onChange={(event) => update("phone", event.target.value)}
-                    placeholder="+49 30 ..."
-                  />
-                </Field>
-              </div>
+          <section className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-5 shadow-sm">
+            <h3 className="text-lg font-semibold text-guhr-text">Notes / next steps</h3>
+            <Textarea
+              className="mt-4 min-h-40 bg-white"
+              value={form.notes}
+              onChange={(event) => update("notes", event.target.value)}
+              placeholder="Internal notes and the next useful action."
+            />
+          </section>
 
-              <Field label="Mandate type">
-                <Select
-                  value={form.mandateType}
-                  onChange={(event) => update("mandateType", event.target.value as MandateType)}
-                >
-                  {mandateTypes.map((type) => (
-                    <option value={type} key={type}>
-                      {type}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Assigned team member">
-                  <Select
-                    value={form.assignedTo}
-                    onChange={(event) => update("assignedTo", event.target.value as TeamMember)}
-                  >
-                    {teamMembers.map((member) => (
-                      <option value={member} key={member}>
-                        {member}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-
-                <Field label="Priority">
-                  <Select
-                    value={form.priority}
-                    onChange={(event) => update("priority", event.target.value as Priority)}
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Normal">Normal</option>
-                    <option value="High">High</option>
-                  </Select>
-                </Field>
-              </div>
-
-              <Field label="Status">
-                <Select
-                  value={form.status}
-                  onChange={(event) => update("status", event.target.value as StatusTag)}
-                >
-                  {statusOptions.map((status) => (
-                    <option value={status.value} key={status.value}>
-                      {status.label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <Field label="Notes / next step">
-                <Textarea
-                  value={form.notes}
-                  onChange={(event) => update("notes", event.target.value)}
-                  placeholder="Summarize the current situation and the next useful action."
-                />
-              </Field>
-            </div>
-          </div>
+          <ChecklistEditor
+            checklist={form.checklist}
+            onAdd={addChecklistItem}
+            onRemove={removeChecklistItem}
+            onRename={renameChecklistItem}
+            onToggle={toggleChecklistItem}
+          />
 
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Button variant="ghost" onClick={closeAddClient}>
@@ -190,19 +270,5 @@ export function AddClientDrawer() {
         </form>
       </aside>
     </div>
-  );
-}
-
-interface FieldProps {
-  label: string;
-  children: ReactNode;
-}
-
-function Field({ label, children }: FieldProps) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-medium text-guhr-muted">{label}</span>
-      {children}
-    </label>
   );
 }

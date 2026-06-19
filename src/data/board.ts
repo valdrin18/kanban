@@ -74,6 +74,19 @@ export const teamMembers: TeamMember[] = [
   "Lisa Braun",
 ];
 
+export const leadSourceOptions = [
+  "Website inquiry",
+  "Google Search",
+  "LinkedIn",
+  "Referral from existing client",
+  "Partner recommendation",
+  "Instagram profile",
+  "Local business network",
+  "Tax newsletter",
+  "Existing network",
+  "Manual entry",
+];
+
 export const statusOptions: Array<{
   value: StatusTag;
   label: string;
