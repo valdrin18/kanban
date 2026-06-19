@@ -13,14 +13,8 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import {
-  boardColumns,
-  getStatusMeta,
-  leadSourceOptions,
-  mandateTypes,
-  teamMembers,
-} from "../../data/board";
+import { useEffect, useMemo, useState } from "react";
+import { getStatusMeta } from "../../data/board";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useBoardStore } from "../../store/useBoardStore";
 import type { ClientCard, ColumnId, MandateType, TeamMember } from "../../types";
@@ -62,7 +56,7 @@ function draftFromClient(client: ClientCard): ClientDraft {
     name: client.name,
     email: client.email,
     phone: client.phone,
-    mandateType: client.mandateTypes[0] ?? "GmbH",
+    mandateType: client.mandateTypes[0] ?? "",
     assignedTo: client.assignedTo,
     leadSource: client.leadSource,
     dateAdded: toInputDate(client.dateAdded),
@@ -82,7 +76,18 @@ export function ClientDetailDrawer() {
   const updateChecklistItem = useBoardStore((state) => state.updateChecklistItem);
   const addChecklistItem = useBoardStore((state) => state.addChecklistItem);
   const removeChecklistItem = useBoardStore((state) => state.removeChecklistItem);
-  const addGeneratedActivity = useBoardStore((state) => state.addGeneratedActivity);
+  const boardColumns = useBoardStore((state) => state.boardColumns);
+  const statusOptions = useBoardStore((state) => state.statusOptions);
+  const mandateOptions = useBoardStore((state) => state.mandateTypes);
+  const teamOptions = useBoardStore((state) => state.teamMembers);
+  const leadSourceOptions = useBoardStore((state) => state.leadSources);
+  const isSaving = useBoardStore((state) => state.isSaving);
+  const mandateTypes = useMemo(() => mandateOptions.map((option) => option.name), [mandateOptions]);
+  const teamMembers = useMemo(() => teamOptions.map((option) => option.name), [teamOptions]);
+  const leadSources = useMemo(
+    () => leadSourceOptions.map((option) => option.name),
+    [leadSourceOptions],
+  );
   const [draft, setDraft] = useState<ClientDraft | null>(null);
   const [generatedMessage, setGeneratedMessage] = useState("");
   const [generationError, setGenerationError] = useState("");
@@ -102,7 +107,7 @@ export function ClientDetailDrawer() {
 
   if (!client || !draft) return null;
 
-  const status = getStatusMeta(client.status);
+  const status = getStatusMeta(client.status, statusOptions);
   const needsFollowUp = isFollowUpRecommended(client);
   const [subjectLine, ...messageLines] = generatedMessage.split("\n");
   const messageSubject = subjectLine?.replace(/^Subject:\s*/, "") ?? "";
@@ -112,11 +117,11 @@ export function ClientDetailDrawer() {
     setDraft((current) => (current ? { ...current, [key]: value } : current));
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!client || !draft) return;
     const notes = draft.notes.trim();
 
-    updateClient(client.id, {
+    await updateClient(client.id, {
       name: draft.name.trim() || client.name,
       email: draft.email.trim(),
       phone: draft.phone.trim(),
@@ -140,7 +145,6 @@ export function ClientDetailDrawer() {
     try {
       const message = await generateAiFollowUp(client);
       setGeneratedMessage(message);
-      addGeneratedActivity(client.id);
     } catch (error) {
       const message =
         error instanceof Error
@@ -182,9 +186,9 @@ export function ClientDetailDrawer() {
               </h2>
             </div>
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="primary" onClick={handleSave}>
+              <Button size="sm" variant="primary" onClick={handleSave} disabled={isSaving}>
                 <CheckCircle2 className="h-4 w-4" />
-                Save
+                {isSaving ? "Saving..." : "Save"}
               </Button>
               <Button size="icon" variant="ghost" onClick={closeClient} aria-label="Close drawer">
                 <X className="h-5 w-5" />
@@ -257,7 +261,7 @@ export function ClientDetailDrawer() {
                 value={draft.leadSource}
                 onChange={(event) => updateDraft("leadSource", event.target.value)}
               >
-                {leadSourceOptions.map((source) => (
+                {leadSources.map((source) => (
                   <option value={source} key={source}>
                     {source}
                   </option>

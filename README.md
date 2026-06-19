@@ -21,8 +21,8 @@ Tax-specific workflow concepts include:
 - Tailwind CSS for a polished custom interface without heavy styling overhead.
 - Clean local UI components inspired by shadcn/ui structure.
 - `@dnd-kit` for smooth, accessible drag-and-drop behavior.
-- Zustand for small, readable state management.
-- Zustand persistence with `localStorage` for a backend-free trial that still keeps changes.
+- Zustand for small, readable UI state management.
+- Supabase/PostgreSQL for persistent clients, checklist items, activity, workflow columns, and lookup data.
 - Lucide React for refined, consistent interface icons.
 
 ## Features
@@ -38,7 +38,39 @@ Tax-specific workflow concepts include:
 - Follow-up message generator
 - Recommended next actions by stage
 - Activity timeline
-- Local persistence through `localStorage`
+- Supabase persistence for all client onboarding data
+
+## Database
+
+The Supabase schema is included in:
+
+```bash
+supabase/schema.sql
+```
+
+Paste that file into the Supabase SQL editor for a fresh project. It creates:
+
+- `board_columns` for the onboarding stages
+- `status_tags` for status labels and tones
+- `team_members` for assignable Guhr staff
+- `mandate_types` and `lead_sources` lookup tables
+- `checklist_templates` for mandate-specific starter checklist items
+- `clients` for client cards
+- `client_mandates` for client-to-mandate relationships
+- `client_checklist_items` for editable checklist state
+- `client_activity` for the timeline
+
+No demo client records are inserted. The initial board is empty, with only workflow and lookup options seeded.
+
+For a showcase dataset, run this after the schema:
+
+```bash
+supabase/demo-data.sql
+```
+
+The demo script creates realistic German tax advisory onboarding clients across the board and can be re-run safely; it removes only those demo clients by email before recreating them.
+
+Because this trial has no login, the SQL uses public anonymous RLS policies so the frontend can read and mutate data with the Supabase anon key. That is suitable for a controlled job-trial/demo project. A production version should add authentication, role-based access, and stricter RLS policies.
 
 ## AI / Automation Note
 
@@ -53,9 +85,18 @@ npm install
 npm run dev
 ```
 
+Create a `.env.local` file with your Supabase project values:
+
+```bash
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
 AI generation requires a server-side OpenAI API key. To enable it locally, create a `.env.local` file and add a fresh OpenAI API key:
 
 ```bash
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 OPENAI_API_KEY=your_new_key_here
 OPENAI_MODEL=gpt-5.5
 ```
@@ -64,7 +105,6 @@ Do not expose the key with a `VITE_` prefix. Vite serves a local `/api/generate-
 
 ## What I Would Improve With More Time
 
-- Supabase/PostgreSQL backend
 - User authentication
 - Role-based permissions
 - Audit logs

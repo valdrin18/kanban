@@ -1,49 +1,33 @@
-export type ColumnId =
-  | "new-inquiry"
-  | "consultation-scheduled"
-  | "qualified-fit"
-  | "documents-requested"
-  | "documents-review"
-  | "contract-sent"
-  | "signed-active"
-  | "paused";
+export type ColumnId = string;
 
-export type MandateType =
-  | "Einkommensteuer"
-  | "GmbH"
-  | "Freelancer"
-  | "Steuerberaterwechsel"
-  | "Finanzbuchhaltung"
-  | "Lohnbuchhaltung"
-  | "Jahresabschluss"
-  | "Heilberufe"
-  | "Rechtsanwälte"
-  | "Architekten"
-  | "IT-Beratung"
-  | "Influencer / Creator"
-  | "Praxisgründung";
+export type MandateType = string;
 
-export type TeamMember = "Karsten Guhr" | "Sophie Weber" | "Max Keller" | "Lisa Braun";
+export type TeamMember = string;
 
-export type StatusTag =
-  | "new-lead"
-  | "consultation-booked"
-  | "qualified"
-  | "waiting-documents"
-  | "missing-documents"
-  | "internal-review"
-  | "awaiting-signature"
-  | "active"
-  | "paused";
+export type StatusTag = string;
 
 export type Priority = "Low" | "Normal" | "High";
 
-export type ActivityType = "created" | "moved" | "checklist" | "generated";
+export type ActivityType = "created" | "moved" | "checklist";
 
 export interface BoardColumn {
   id: ColumnId;
   title: string;
   description: string;
+  defaultStatus: StatusTag;
+  sortOrder: number;
+}
+
+export interface StatusOption {
+  value: StatusTag;
+  label: string;
+  tone: "neutral" | "gold" | "green" | "orange" | "red" | "gray";
+}
+
+export interface LookupOption {
+  id: string;
+  name: string;
+  sortOrder: number;
 }
 
 export interface ActivityItem {

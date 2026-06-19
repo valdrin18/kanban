@@ -2,7 +2,6 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { useDroppable } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
 import { Fragment } from "react";
-import { boardColumns } from "../../data/board";
 import { cn } from "../../lib/utils";
 import { useBoardStore } from "../../store/useBoardStore";
 import type { BoardColumn, ClientCard as ClientCardType } from "../../types";

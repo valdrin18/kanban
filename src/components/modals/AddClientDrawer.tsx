@@ -8,14 +8,8 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
-import {
-  createChecklist,
-  getColumnTitle,
-  leadSourceOptions,
-  mandateTypes,
-  teamMembers,
-} from "../../data/board";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { createChecklist, getColumnTitle, type ChecklistTemplates } from "../../data/board";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useBoardStore } from "../../store/useBoardStore";
 import type { ChecklistItem, MandateType, NewClientInput, Priority, TeamMember } from "../../types";
@@ -31,19 +25,24 @@ function checklistItemId(label: string) {
   return `${normalized || "checklist-item"}-${Date.now().toString(36)}`;
 }
 
-function makeInitialForm(): NewClientInput {
-  const mandateType: MandateType = "GmbH";
+function makeInitialForm(
+  mandateTypes: string[],
+  teamMembers: string[],
+  leadSources: string[],
+  checklistTemplates: ChecklistTemplates,
+): NewClientInput {
+  const mandateType = mandateTypes[0] ?? "";
 
   return {
     name: "",
     email: "",
     phone: "",
     mandateType,
-    assignedTo: "Sophie Weber",
-    leadSource: "Manual entry",
+    assignedTo: teamMembers[0] ?? "",
+    leadSource: leadSources[0] ?? "",
     priority: "Normal",
     notes: "",
-    checklist: createChecklist([mandateType]),
+    checklist: mandateType ? createChecklist([mandateType], checklistTemplates) : [],
   };
 }
 
@@ -51,13 +50,27 @@ export function AddClientDrawer() {
   const columnId = useBoardStore((state) => state.addClientColumnId);
   const addClient = useBoardStore((state) => state.addClient);
   const closeAddClient = useBoardStore((state) => state.closeAddClient);
-  const [form, setForm] = useState<NewClientInput>(makeInitialForm);
+  const boardColumns = useBoardStore((state) => state.boardColumns);
+  const mandateOptions = useBoardStore((state) => state.mandateTypes);
+  const teamOptions = useBoardStore((state) => state.teamMembers);
+  const leadSourceOptions = useBoardStore((state) => state.leadSources);
+  const checklistTemplates = useBoardStore((state) => state.checklistTemplates);
+  const isSaving = useBoardStore((state) => state.isSaving);
+  const mandateTypes = useMemo(() => mandateOptions.map((option) => option.name), [mandateOptions]);
+  const teamMembers = useMemo(() => teamOptions.map((option) => option.name), [teamOptions]);
+  const leadSources = useMemo(
+    () => leadSourceOptions.map((option) => option.name),
+    [leadSourceOptions],
+  );
+  const [form, setForm] = useState<NewClientInput>(() =>
+    makeInitialForm(mandateTypes, teamMembers, leadSources, checklistTemplates),
+  );
   useBodyScrollLock(Boolean(columnId));
 
   useEffect(() => {
     if (!columnId) return;
-    setForm(makeInitialForm());
-  }, [columnId]);
+    setForm(makeInitialForm(mandateTypes, teamMembers, leadSources, checklistTemplates));
+  }, [checklistTemplates, columnId, leadSources, mandateTypes, teamMembers]);
 
   if (!columnId) return null;
   const activeColumnId = columnId;
@@ -70,7 +83,7 @@ export function AddClientDrawer() {
     setForm((current) => ({
       ...current,
       mandateType,
-      checklist: createChecklist([mandateType]),
+      checklist: createChecklist([mandateType], checklistTemplates),
     }));
   }
 
@@ -119,16 +132,16 @@ export function AddClientDrawer() {
     }));
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!form.name.trim() || !form.email.trim()) return;
+    if (!form.name.trim() || !form.email.trim() || !form.mandateType || !form.assignedTo) return;
 
-    addClient(activeColumnId, {
+    await addClient(activeColumnId, {
       ...form,
       name: form.name.trim(),
       email: form.email.trim(),
       phone: form.phone.trim(),
-      leadSource: form.leadSource.trim() || "Manual entry",
+      leadSource: form.leadSource.trim() || leadSources[0] || "",
       notes: form.notes.trim() || "Prepare onboarding context and confirm next step.",
       checklist: form.checklist.map((item): ChecklistItem => ({
         ...item,
@@ -150,7 +163,7 @@ export function AddClientDrawer() {
             <div>
               <p className="text-sm font-medium text-guhr-muted">Add client to</p>
               <h2 className="mt-1 text-2xl font-semibold tracking-normal text-guhr-text">
-                {getColumnTitle(activeColumnId)}
+                {getColumnTitle(activeColumnId, boardColumns)}
               </h2>
             </div>
             <Button size="icon" variant="ghost" onClick={closeAddClient} aria-label="Close drawer">
@@ -231,7 +244,7 @@ export function AddClientDrawer() {
                 value={form.leadSource}
                 onChange={(event) => update("leadSource", event.target.value)}
               >
-                {leadSourceOptions.map((source) => (
+                {leadSources.map((source) => (
                   <option value={source} key={source}>
                     {source}
                   </option>
@@ -262,9 +275,9 @@ export function AddClientDrawer() {
             <Button variant="ghost" onClick={closeAddClient}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary">
+            <Button type="submit" variant="primary" disabled={isSaving}>
               <Plus className="h-4 w-4" />
-              Add client
+              {isSaving ? "Adding..." : "Add client"}
             </Button>
           </div>
         </form>

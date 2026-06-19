@@ -102,7 +102,8 @@ function ClientCardArticle({
   setNodeRef,
   style,
 }: ClientCardArticleProps) {
-  const status = getStatusMeta(client.status);
+  const statusOptions = useBoardStore((state) => state.statusOptions);
+  const status = getStatusMeta(client.status, statusOptions);
   const daysInStage = daysSince(client.stageUpdatedAt);
   const needsFollowUp = isFollowUpRecommended(client);
 

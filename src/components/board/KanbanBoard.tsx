@@ -13,7 +13,6 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Minus, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
-import { boardColumns } from "../../data/board";
 import { useFilteredClients } from "../../hooks/useFilteredClients";
 import { useBoardStore } from "../../store/useBoardStore";
 import type { ColumnId } from "../../types";
@@ -42,6 +41,7 @@ function getIntersectionArea(
 
 export function KanbanBoard() {
   const clients = useFilteredClients();
+  const boardColumns = useBoardStore((state) => state.boardColumns);
   const moveClient = useBoardStore((state) => state.moveClient);
   const [activeClientId, setActiveClientId] = useState<string | null>(null);
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);

@@ -1,5 +1,4 @@
 import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
-import { mandateTypes, statusOptions, teamMembers } from "../../data/board";
 import { useBoardStore } from "../../store/useBoardStore";
 import type { MandateType, StatusTag, TeamMember } from "../../types";
 import { Input } from "../ui/Input";
@@ -9,6 +8,9 @@ export function FilterBar() {
   const filters = useBoardStore((state) => state.filters);
   const setFilters = useBoardStore((state) => state.setFilters);
   const clearFilters = useBoardStore((state) => state.clearFilters);
+  const mandateTypes = useBoardStore((state) => state.mandateTypes);
+  const teamMembers = useBoardStore((state) => state.teamMembers);
+  const statusOptions = useBoardStore((state) => state.statusOptions);
   const hasActiveFilters =
     filters.search || filters.mandateType !== "all" || filters.teamMember !== "all" || filters.status !== "all";
 
@@ -36,8 +38,8 @@ export function FilterBar() {
             >
               <option value="all">All mandate types</option>
               {mandateTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
+                <option key={type.id} value={type.name}>
+                  {type.name}
                 </option>
               ))}
             </Select>
@@ -54,8 +56,8 @@ export function FilterBar() {
             >
               <option value="all">All team members</option>
               {teamMembers.map((member) => (
-                <option key={member} value={member}>
-                  {member}
+                <option key={member.id} value={member.name}>
+                  {member.name}
                 </option>
               ))}
             </Select>

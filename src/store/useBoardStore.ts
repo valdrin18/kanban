@@ -1,34 +1,58 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import { boardColumns, createChecklist, getColumnTitle, seedClients } from "../data/board";
+import {
+  addChecklistItemRecord,
+  createClientRecord,
+  loadBoardData,
+  persistClientMove,
+  removeChecklistItemRecord,
+  toggleChecklistItemRecord,
+  updateChecklistItemRecord,
+  updateClientRecord,
+} from "../lib/boardRepository";
+import {
+  defaultStatusForColumn,
+  getColumnTitle,
+  type ChecklistTemplates,
+} from "../data/board";
 import type {
+  BoardColumn,
   BoardFilters,
-  ClientCard,
   ChecklistItem,
+  ClientCard,
   ColumnId,
+  LookupOption,
   NewClientInput,
-  StatusTag,
+  StatusOption,
 } from "../types";
 
 interface BoardState {
   clients: ClientCard[];
+  boardColumns: BoardColumn[];
+  statusOptions: StatusOption[];
+  mandateTypes: LookupOption[];
+  teamMembers: LookupOption[];
+  leadSources: LookupOption[];
+  checklistTemplates: ChecklistTemplates;
   filters: BoardFilters;
   selectedClientId: string | null;
   addClientColumnId: ColumnId | null;
+  isLoading: boolean;
+  isSaving: boolean;
+  error: string | null;
+  loadBoard: () => Promise<void>;
   setFilters: (filters: Partial<BoardFilters>) => void;
   clearFilters: () => void;
   openClient: (clientId: string) => void;
   closeClient: () => void;
   openAddClient: (columnId: ColumnId) => void;
   closeAddClient: () => void;
-  addClient: (columnId: ColumnId, input: NewClientInput) => void;
-  updateClient: (clientId: string, updates: Partial<ClientCard>) => void;
+  addClient: (columnId: ColumnId, input: NewClientInput) => Promise<void>;
+  updateClient: (clientId: string, updates: Partial<ClientCard>) => Promise<void>;
   moveClient: (clientId: string, targetStage: ColumnId, targetIndex: number) => void;
   toggleChecklistItem: (clientId: string, itemId: string) => void;
   updateChecklistItem: (clientId: string, itemId: string, label: string) => void;
-  addChecklistItem: (clientId: string, label: string) => void;
+  addChecklistItem: (clientId: string, label: string) => Promise<void>;
   removeChecklistItem: (clientId: string, itemId: string) => void;
-  addGeneratedActivity: (clientId: string) => void;
 }
 
 const emptyFilters: BoardFilters = {
@@ -46,273 +70,241 @@ function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function defaultStatusForColumn(columnId: ColumnId): StatusTag {
-  const statusByColumn: Record<ColumnId, StatusTag> = {
-    "new-inquiry": "new-lead",
-    "consultation-scheduled": "consultation-booked",
-    "qualified-fit": "qualified",
-    "documents-requested": "waiting-documents",
-    "documents-review": "internal-review",
-    "contract-sent": "awaiting-signature",
-    "signed-active": "active",
-    paused: "paused",
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Something went wrong while saving the board.";
+}
+
+function lookupsFromState(state: BoardState) {
+  return {
+    mandateTypes: state.mandateTypes,
+    teamMembers: state.teamMembers,
+    leadSources: state.leadSources,
   };
-
-  return statusByColumn[columnId];
 }
 
-function checklistItemId(label: string) {
-  const normalized = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
-  return `${normalized || "checklist-item"}-${Date.now().toString(36)}`;
-}
+export const useBoardStore = create<BoardState>()((set, get) => ({
+  clients: [],
+  boardColumns: [],
+  statusOptions: [],
+  mandateTypes: [],
+  teamMembers: [],
+  leadSources: [],
+  checklistTemplates: {},
+  filters: emptyFilters,
+  selectedClientId: null,
+  addClientColumnId: null,
+  isLoading: true,
+  isSaving: false,
+  error: null,
+  loadBoard: async () => {
+    const hasLoadedLookups = get().boardColumns.length > 0;
+    set({ isLoading: !hasLoadedLookups, error: null });
 
-export const useBoardStore = create<BoardState>()(
-  persist(
-    (set, get) => ({
-      clients: seedClients,
-      filters: emptyFilters,
-      selectedClientId: null,
-      addClientColumnId: null,
-      setFilters: (filters) =>
-        set((state) => ({
-          filters: {
-            ...state.filters,
-            ...filters,
-          },
-        })),
-      clearFilters: () => set({ filters: emptyFilters }),
-      openClient: (clientId) => set({ selectedClientId: clientId }),
-      closeClient: () => set({ selectedClientId: null }),
-      openAddClient: (columnId) => set({ addClientColumnId: columnId }),
-      closeAddClient: () => set({ addClientColumnId: null }),
-      addClient: (columnId, input) => {
-        const now = new Date().toISOString();
-        const newClient: ClientCard = {
-          id: makeId("client"),
-          name: input.name,
-          email: input.email,
-          phone: input.phone,
-          mandateTypes: [input.mandateType],
-          assignedTo: input.assignedTo,
-          leadSource: input.leadSource,
-          dateAdded: now,
-          currentStage: columnId,
-          stageUpdatedAt: now,
-          status: defaultStatusForColumn(columnId),
-          priority: input.priority,
-          notes: input.notes,
-          nextStep: input.notes || "Review onboarding context and prepare next step.",
-          checklist: input.checklist.length > 0 ? input.checklist : createChecklist([input.mandateType]),
-          activity: [
+    try {
+      const data = await loadBoardData();
+      set({
+        clients: data.clients,
+        boardColumns: data.boardColumns,
+        statusOptions: data.statusOptions,
+        mandateTypes: data.mandateTypes,
+        teamMembers: data.teamMembers,
+        leadSources: data.leadSources,
+        checklistTemplates: data.checklistTemplates,
+        isLoading: false,
+        error: null,
+      });
+    } catch (error) {
+      set({ isLoading: false, error: errorMessage(error) });
+    }
+  },
+  setFilters: (filters) =>
+    set((state) => ({
+      filters: {
+        ...state.filters,
+        ...filters,
+      },
+    })),
+  clearFilters: () => set({ filters: emptyFilters }),
+  openClient: (clientId) => set({ selectedClientId: clientId }),
+  closeClient: () => set({ selectedClientId: null }),
+  openAddClient: (columnId) => set({ addClientColumnId: columnId }),
+  closeAddClient: () => set({ addClientColumnId: null }),
+  addClient: async (columnId, input) => {
+    set({ isSaving: true, error: null });
+
+    try {
+      const state = get();
+      await createClientRecord(columnId, input, lookupsFromState(state), state.boardColumns);
+      await get().loadBoard();
+      set({ addClientColumnId: null, isSaving: false });
+    } catch (error) {
+      set({ isSaving: false, error: errorMessage(error) });
+    }
+  },
+  updateClient: async (clientId, updates) => {
+    const client = get().clients.find((item) => item.id === clientId);
+    if (!client) return;
+
+    set({ isSaving: true, error: null });
+
+    try {
+      const state = get();
+      await updateClientRecord(client, updates, lookupsFromState(state), state.boardColumns);
+      await get().loadBoard();
+      set({ isSaving: false });
+    } catch (error) {
+      set({ isSaving: false, error: errorMessage(error) });
+    }
+  },
+  moveClient: (clientId, targetStage, targetIndex) => {
+    const state = get();
+    const currentClient = state.clients.find((client) => client.id === clientId);
+    if (!currentClient) return;
+
+    const stageChanged = currentClient.currentStage !== targetStage;
+    const now = new Date().toISOString();
+    const sourceTitle = getColumnTitle(currentClient.currentStage, state.boardColumns);
+    const targetTitle = getColumnTitle(targetStage, state.boardColumns);
+    const withoutClient = state.clients.filter((client) => client.id !== clientId);
+    const targetColumnClients = withoutClient.filter(
+      (client) => client.currentStage === targetStage,
+    );
+    const beforeClient = targetColumnClients[Math.max(0, targetIndex)];
+    const insertionIndex = beforeClient
+      ? withoutClient.findIndex((client) => client.id === beforeClient.id)
+      : targetColumnClients.length > 0
+        ? withoutClient.findIndex(
+            (client) => client.id === targetColumnClients[targetColumnClients.length - 1].id,
+          ) + 1
+        : withoutClient.length;
+
+    const updatedClient: ClientCard = {
+      ...currentClient,
+      currentStage: targetStage,
+      stageUpdatedAt: stageChanged ? now : currentClient.stageUpdatedAt,
+      status: stageChanged
+        ? defaultStatusForColumn(targetStage, state.boardColumns)
+        : currentClient.status,
+      activity: stageChanged
+        ? [
             {
               id: makeId("activity"),
               timestamp: now,
-              title: "Client card created",
-              detail: `Added directly to ${getColumnTitle(columnId)}.`,
-              type: "created",
+              title: "Stage updated",
+              detail: `Moved from ${sourceTitle} to ${targetTitle}.`,
+              type: "moved",
             },
-          ],
-        };
+            ...currentClient.activity,
+          ]
+        : currentClient.activity,
+    };
 
-        set((state) => ({
-          clients: [...state.clients, newClient],
-          addClientColumnId: null,
-        }));
-      },
-      updateClient: (clientId, updates) => {
-        const now = new Date().toISOString();
-        set((state) => ({
-          clients: state.clients.map((client) => {
-            if (client.id !== clientId) return client;
+    const nextClients = [...withoutClient];
+    nextClients.splice(Math.max(0, insertionIndex), 0, updatedClient);
 
-            const stageChanged =
-              updates.currentStage !== undefined && updates.currentStage !== client.currentStage;
-            const nextStage = updates.currentStage ?? client.currentStage;
-            const nextUpdates: Partial<ClientCard> = {
-              ...updates,
-              stageUpdatedAt: stageChanged ? now : (updates.stageUpdatedAt ?? client.stageUpdatedAt),
-            };
-            if (stageChanged && updates.status === undefined) {
-              nextUpdates.status = defaultStatusForColumn(nextStage);
-            }
+    set({ clients: nextClients, error: null });
 
-            return {
-              ...client,
-              ...nextUpdates,
-              activity: stageChanged
-                ? [
-                    {
-                      id: makeId("activity"),
-                      timestamp: now,
-                      title: "Client details updated",
-                      detail: `Stage changed to ${getColumnTitle(nextStage)}.`,
-                      type: "moved",
-                    },
-                    ...client.activity,
-                  ]
-                : client.activity,
-            };
-          }),
-        }));
-      },
-      moveClient: (clientId, targetStage, targetIndex) => {
-        const state = get();
-        const currentClient = state.clients.find((client) => client.id === clientId);
-        if (!currentClient) return;
+    void persistClientMove(currentClient, nextClients, state.boardColumns).catch((error) => {
+      set({ error: errorMessage(error) });
+      void get().loadBoard();
+    });
+  },
+  toggleChecklistItem: (clientId, itemId) => {
+    const now = new Date().toISOString();
+    const state = get();
+    const client = state.clients.find((item) => item.id === clientId);
+    const changedItem = client?.checklist.find((item) => item.id === itemId);
+    if (!client || !changedItem) return;
 
-        const stageChanged = currentClient.currentStage !== targetStage;
-        const now = new Date().toISOString();
-        const sourceTitle = getColumnTitle(currentClient.currentStage);
-        const targetTitle = getColumnTitle(targetStage);
-        const withoutClient = state.clients.filter((client) => client.id !== clientId);
-        const targetColumnClients = withoutClient.filter(
-          (client) => client.currentStage === targetStage,
-        );
-        const beforeClient = targetColumnClients[Math.max(0, targetIndex)];
-        const insertionIndex = beforeClient
-          ? withoutClient.findIndex((client) => client.id === beforeClient.id)
-          : targetColumnClients.length > 0
-            ? withoutClient.findIndex(
-                (client) => client.id === targetColumnClients[targetColumnClients.length - 1].id,
-              ) + 1
-            : withoutClient.length;
+    const nextCompleted = !changedItem.completed;
 
-        const updatedClient: ClientCard = {
-          ...currentClient,
-          currentStage: targetStage,
-          stageUpdatedAt: stageChanged ? now : currentClient.stageUpdatedAt,
-          status: stageChanged ? defaultStatusForColumn(targetStage) : currentClient.status,
-          activity: stageChanged
-            ? [
+    set({
+      clients: state.clients.map((item) =>
+        item.id === clientId
+          ? {
+              ...item,
+              checklist: item.checklist.map((checklistItem) =>
+                checklistItem.id === itemId
+                  ? { ...checklistItem, completed: !checklistItem.completed }
+                  : checklistItem,
+              ),
+              activity: [
                 {
                   id: makeId("activity"),
                   timestamp: now,
-                  title: "Stage updated",
-                  detail: `Moved from ${sourceTitle} to ${targetTitle}.`,
-                  type: "moved",
+                  title: nextCompleted ? "Checklist item completed" : "Checklist item reopened",
+                  detail: changedItem.label,
+                  type: "checklist",
                 },
-                ...currentClient.activity,
-              ]
-            : currentClient.activity,
-        };
+                ...item.activity,
+              ],
+            }
+          : item,
+      ),
+      error: null,
+    });
 
-        const nextClients = [...withoutClient];
-        nextClients.splice(Math.max(0, insertionIndex), 0, updatedClient);
+    void toggleChecklistItemRecord(client, changedItem).catch((error) => {
+      set({ error: errorMessage(error) });
+      void get().loadBoard();
+    });
+  },
+  updateChecklistItem: (clientId, itemId, label) => {
+    const trimmedLabel = label.trim();
+    if (!trimmedLabel) return;
 
-        set({ clients: nextClients });
-      },
-      toggleChecklistItem: (clientId, itemId) => {
-        const now = new Date().toISOString();
-        set((state) => ({
-          clients: state.clients.map((client) => {
-            if (client.id !== clientId) return client;
-
-            const changedItem = client.checklist.find((item) => item.id === itemId);
-            const nextCompleted = !changedItem?.completed;
-
-            return {
+    set((state) => ({
+      clients: state.clients.map((client) =>
+        client.id === clientId
+          ? {
               ...client,
               checklist: client.checklist.map((item) =>
-                item.id === itemId ? { ...item, completed: !item.completed } : item,
+                item.id === itemId ? { ...item, label: trimmedLabel } : item,
               ),
-              activity: changedItem
-                ? [
-                    {
-                      id: makeId("activity"),
-                      timestamp: now,
-                      title: nextCompleted ? "Checklist item completed" : "Checklist item reopened",
-                      detail: changedItem.label,
-                      type: "checklist",
-                    },
-                    ...client.activity,
-                  ]
-                : client.activity,
-            };
-          }),
-        }));
-      },
-      updateChecklistItem: (clientId, itemId, label) => {
-        const trimmedLabel = label.trim();
-        if (!trimmedLabel) return;
+            }
+          : client,
+      ),
+      error: null,
+    }));
 
-        set((state) => ({
-          clients: state.clients.map((client) =>
-            client.id === clientId
-              ? {
-                  ...client,
-                  checklist: client.checklist.map((item) =>
-                    item.id === itemId ? { ...item, label: trimmedLabel } : item,
-                  ),
-                }
-              : client,
-          ),
-        }));
-      },
-      addChecklistItem: (clientId, label) => {
-        const trimmedLabel = label.trim();
-        if (!trimmedLabel) return;
+    void updateChecklistItemRecord(itemId, trimmedLabel).catch((error) => {
+      set({ error: errorMessage(error) });
+      void get().loadBoard();
+    });
+  },
+  addChecklistItem: async (clientId, label) => {
+    const trimmedLabel = label.trim();
+    if (!trimmedLabel) return;
 
-        const newItem: ChecklistItem = {
-          id: checklistItemId(trimmedLabel),
-          label: trimmedLabel,
-          completed: false,
-        };
+    const client = get().clients.find((item) => item.id === clientId);
+    if (!client) return;
 
-        set((state) => ({
-          clients: state.clients.map((client) =>
-            client.id === clientId
-              ? {
-                  ...client,
-                  checklist: [...client.checklist, newItem],
-                }
-              : client,
-          ),
-        }));
-      },
-      removeChecklistItem: (clientId, itemId) => {
-        set((state) => ({
-          clients: state.clients.map((client) =>
-            client.id === clientId
-              ? {
-                  ...client,
-                  checklist: client.checklist.filter((item) => item.id !== itemId),
-                }
-              : client,
-          ),
-        }));
-      },
-      addGeneratedActivity: (clientId) => {
-        const now = new Date().toISOString();
-        set((state) => ({
-          clients: state.clients.map((client) =>
-            client.id === clientId
-              ? {
-                  ...client,
-                  activity: [
-                    {
-                      id: makeId("activity"),
-                      timestamp: now,
-                      title: "Follow-up generated",
-                      detail: "Template message prepared for human review.",
-                      type: "generated",
-                    },
-                    ...client.activity,
-                  ],
-                }
-              : client,
-          ),
-        }));
-      },
-    }),
-    {
-      name: "guhr-onboarding-crm",
-      partialize: (state) => ({
-        clients: state.clients,
-        filters: state.filters,
-      }),
-      version: 1,
-    },
-  ),
-);
+    set({ isSaving: true, error: null });
 
-export const columnIds = boardColumns.map((column) => column.id);
+    try {
+      await addChecklistItemRecord(client, trimmedLabel);
+      await get().loadBoard();
+      set({ isSaving: false });
+    } catch (error) {
+      set({ isSaving: false, error: errorMessage(error) });
+    }
+  },
+  removeChecklistItem: (clientId, itemId) => {
+    set((state) => ({
+      clients: state.clients.map((client) =>
+        client.id === clientId
+          ? {
+              ...client,
+              checklist: client.checklist.filter((item) => item.id !== itemId),
+            }
+          : client,
+      ),
+      error: null,
+    }));
+
+    void removeChecklistItemRecord(itemId).catch((error) => {
+      set({ error: errorMessage(error) });
+      void get().loadBoard();
+    });
+  },
+}));
