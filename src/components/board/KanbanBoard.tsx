@@ -13,8 +13,10 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Minus, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
+import { t } from "../../lib/i18n";
 import { useFilteredClients } from "../../hooks/useFilteredClients";
 import { useBoardStore } from "../../store/useBoardStore";
+import { useLanguageStore } from "../../store/useLanguageStore";
 import type { ColumnId } from "../../types";
 import { ClientCard, ClientCardOverlay } from "../cards/ClientCard";
 import { KanbanColumn } from "./KanbanColumn";
@@ -40,6 +42,7 @@ function getIntersectionArea(
 }
 
 export function KanbanBoard() {
+  const language = useLanguageStore((state) => state.language);
   const clients = useFilteredClients();
   const boardColumns = useBoardStore((state) => state.boardColumns);
   const moveClient = useBoardStore((state) => state.moveClient);
@@ -241,8 +244,8 @@ export function KanbanBoard() {
             className="flex h-8 w-8 items-center justify-center rounded-full text-guhr-muted transition hover:bg-guhr-background hover:text-guhr-text disabled:opacity-35"
             onClick={zoomOut}
             disabled={zoomIndex === 0}
-            aria-label="Zoom out board"
-            title="Zoom out"
+            aria-label={t(language, "board.zoomOut")}
+            title={t(language, "board.zoomOut")}
           >
             <Minus className="h-4 w-4" />
           </button>
@@ -250,8 +253,8 @@ export function KanbanBoard() {
             type="button"
             className="min-w-14 rounded-full px-2.5 py-1 text-xs font-semibold text-guhr-text transition hover:bg-guhr-background"
             onClick={() => setZoomIndex(2)}
-            aria-label="Reset board zoom"
-            title="Reset zoom"
+            aria-label={t(language, "board.resetZoom")}
+            title={t(language, "board.resetZoom")}
           >
             {Math.round(zoom * 100)}%
           </button>
@@ -260,8 +263,8 @@ export function KanbanBoard() {
             className="flex h-8 w-8 items-center justify-center rounded-full text-guhr-muted transition hover:bg-guhr-background hover:text-guhr-text disabled:opacity-35"
             onClick={zoomIn}
             disabled={zoomIndex === zoomLevels.length - 1}
-            aria-label="Zoom in board"
-            title="Zoom in"
+            aria-label={t(language, "board.zoomIn")}
+            title={t(language, "board.zoomIn")}
           >
             <Plus className="h-4 w-4" />
           </button>

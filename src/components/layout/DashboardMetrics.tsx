@@ -1,6 +1,8 @@
 import { AlertTriangle, CheckCircle2, FileText, Inbox } from "lucide-react";
 import { useMemo } from "react";
 import { useBoardStore } from "../../store/useBoardStore";
+import { useLanguageStore } from "../../store/useLanguageStore";
+import { t } from "../../lib/i18n";
 import { isCurrentMonth } from "../../utils/dates";
 import { isFollowUpRecommended } from "../../utils/recommendations";
 import { cn } from "../../lib/utils";
@@ -9,30 +11,31 @@ const metricShell =
   "relative px-4 py-3";
 
 export function DashboardMetrics() {
+  const language = useLanguageStore((state) => state.language);
   const clients = useBoardStore((state) => state.clients);
 
   const metrics = useMemo(
     () => [
       {
-        label: "New inquiries",
+        label: t(language, "metrics.newInquiries"),
         value: clients.filter((client) => client.currentStage === "new-inquiry").length,
         icon: Inbox,
         tone: "text-guhr-gold bg-guhr-goldSoft",
       },
       {
-        label: "Waiting for documents",
+        label: t(language, "metrics.waitingDocuments"),
         value: clients.filter((client) => client.currentStage === "documents-requested").length,
         icon: FileText,
         tone: "text-guhr-orange bg-orange-50",
       },
       {
-        label: "Overdue follow-ups",
+        label: t(language, "metrics.overdueFollowUps"),
         value: clients.filter(isFollowUpRecommended).length,
         icon: AlertTriangle,
         tone: "text-guhr-red bg-red-50",
       },
       {
-        label: "Signed this month",
+        label: t(language, "metrics.signedThisMonth"),
         value: clients.filter(
           (client) => client.currentStage === "signed-active" && isCurrentMonth(client.stageUpdatedAt),
         ).length,
@@ -40,7 +43,7 @@ export function DashboardMetrics() {
         tone: "text-guhr-green bg-green-50",
       },
     ],
-    [clients],
+    [clients, language],
   );
 
   return (

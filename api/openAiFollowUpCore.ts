@@ -11,6 +11,7 @@ interface FollowUpRequestPayload {
   nextStep?: string;
   missingChecklistItems?: string[];
   completedChecklistItems?: string[];
+  outputLanguage?: string;
 }
 
 interface OpenAiResponseContent {
@@ -31,12 +32,12 @@ interface OpenAiResponseBody {
 }
 
 const systemInstructions = `
-You draft polished German follow-up emails for Guhr Steuerberatungsgesellschaft mbH, a modern tax advisory firm in Berlin.
+You draft polished follow-up emails for Guhr Steuerberatungsgesellschaft mbH, a modern tax advisory firm in Berlin.
 
 Expected output:
 - Return only the email draft.
 - Start with a single "Subject:" line.
-- Write in clear, professional German.
+- Write in the requested output language.
 - Keep it concise, warm, and business-focused.
 - Use the current onboarding stage, mandate type, missing checklist items, notes, and next step.
 - Do not invent documents, facts, deadlines, legal advice, or tax advice.
@@ -78,6 +79,7 @@ function sanitizePayload(payload: FollowUpRequestPayload) {
     nextStep: payload.nextStep ?? "",
     missingChecklistItems: payload.missingChecklistItems ?? [],
     completedChecklistItems: payload.completedChecklistItems ?? [],
+    outputLanguage: payload.outputLanguage === "German" ? "German" : "English",
   };
 }
 

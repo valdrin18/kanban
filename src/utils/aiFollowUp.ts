@@ -1,4 +1,6 @@
 import { getColumnTitle } from "../data/board";
+import { outputLanguageName } from "../lib/i18n";
+import type { Language } from "../store/useLanguageStore";
 import type { ClientCard } from "../types";
 
 export interface FollowUpRequestPayload {
@@ -16,9 +18,10 @@ export interface FollowUpRequestPayload {
   nextStep: string;
   missingChecklistItems: string[];
   completedChecklistItems: string[];
+  outputLanguage: string;
 }
 
-function buildFollowUpPayload(card: ClientCard): FollowUpRequestPayload {
+function buildFollowUpPayload(card: ClientCard, language: Language): FollowUpRequestPayload {
   return {
     clientName: card.name,
     email: card.email,
@@ -38,17 +41,18 @@ function buildFollowUpPayload(card: ClientCard): FollowUpRequestPayload {
     completedChecklistItems: card.checklist
       .filter((item) => item.completed)
       .map((item) => item.label),
+    outputLanguage: outputLanguageName(language),
   };
 }
 
-export async function generateAiFollowUp(card: ClientCard) {
+export async function generateAiFollowUp(card: ClientCard, language: Language) {
   const endpoint = import.meta.env.VITE_AI_FOLLOWUP_ENDPOINT ?? "/api/generate-follow-up";
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(buildFollowUpPayload(card)),
+    body: JSON.stringify(buildFollowUpPayload(card, language)),
   });
 
   if (!response.ok) {

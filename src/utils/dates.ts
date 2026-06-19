@@ -1,20 +1,9 @@
-const dateFormatter = new Intl.DateTimeFormat("de-DE", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-});
+import { localeForLanguage } from "../lib/i18n";
+import type { Language } from "../store/useLanguageStore";
 
-const shortDateFormatter = new Intl.DateTimeFormat("de-DE", {
-  day: "2-digit",
-  month: "short",
-});
-
-const dateTimeFormatter = new Intl.DateTimeFormat("de-DE", {
-  day: "2-digit",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
+function formatter(language: Language, options: Intl.DateTimeFormatOptions) {
+  return new Intl.DateTimeFormat(localeForLanguage(language), options);
+}
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -25,16 +14,28 @@ export function daysAgo(days: number, hour = 9) {
   return date.toISOString();
 }
 
-export function formatDate(value: string) {
-  return dateFormatter.format(new Date(value));
+export function formatDate(value: string, language: Language = "de") {
+  return formatter(language, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
-export function formatShortDate(value: string) {
-  return shortDateFormatter.format(new Date(value));
+export function formatShortDate(value: string, language: Language = "de") {
+  return formatter(language, {
+    day: "2-digit",
+    month: "short",
+  }).format(new Date(value));
 }
 
-export function formatDateTime(value: string) {
-  return dateTimeFormatter.format(new Date(value));
+export function formatDateTime(value: string, language: Language = "de") {
+  return formatter(language, {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 export function daysSince(value: string) {

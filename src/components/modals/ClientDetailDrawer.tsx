@@ -16,6 +16,18 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { getStatusMeta } from "../../data/board";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import {
+  canonicalKnownText,
+  t,
+  translateChecklistLabel,
+  translateColumn,
+  translateKnownText,
+  translateLeadSource,
+  translateMandateType,
+  translatePriority,
+  translateStatusLabel,
+} from "../../lib/i18n";
+import { useLanguageStore, type Language } from "../../store/useLanguageStore";
 import { useBoardStore } from "../../store/useBoardStore";
 import type { ClientCard, ColumnId, MandateType, TeamMember } from "../../types";
 import { generateAiFollowUp } from "../../utils/aiFollowUp";
@@ -51,7 +63,14 @@ function inputDateToIso(value: string, fallback: string) {
   return Number.isNaN(date.getTime()) ? fallback : date.toISOString();
 }
 
-function draftFromClient(client: ClientCard): ClientDraft {
+function translateActivityDetail(detail: string | undefined, language: Language) {
+  if (!detail) return "";
+
+  const checklistLabel = translateChecklistLabel(detail, language);
+  return checklistLabel === detail ? translateKnownText(detail, language) : checklistLabel;
+}
+
+function draftFromClient(client: ClientCard, language: Language): ClientDraft {
   return {
     name: client.name,
     email: client.email,
@@ -61,11 +80,12 @@ function draftFromClient(client: ClientCard): ClientDraft {
     leadSource: client.leadSource,
     dateAdded: toInputDate(client.dateAdded),
     currentStage: client.currentStage,
-    notes: client.notes || client.nextStep,
+    notes: translateKnownText(client.notes || client.nextStep, language),
   };
 }
 
 export function ClientDetailDrawer() {
+  const language = useLanguageStore((state) => state.language);
   const selectedClientId = useBoardStore((state) => state.selectedClientId);
   const client = useBoardStore((state) =>
     state.clients.find((item) => item.id === state.selectedClientId),
@@ -97,20 +117,20 @@ export function ClientDetailDrawer() {
 
   useEffect(() => {
     if (client) {
-      setDraft(draftFromClient(client));
+      setDraft(draftFromClient(client, language));
     }
     setGeneratedMessage("");
     setGenerationError("");
     setIsGenerating(false);
     setCopied(false);
-  }, [selectedClientId]);
+  }, [language, selectedClientId]);
 
   if (!client || !draft) return null;
 
-  const status = getStatusMeta(client.status, statusOptions);
+  const status = translateStatusLabel(getStatusMeta(client.status, statusOptions), language);
   const needsFollowUp = isFollowUpRecommended(client);
   const [subjectLine, ...messageLines] = generatedMessage.split("\n");
-  const messageSubject = subjectLine?.replace(/^Subject:\s*/, "") ?? "";
+  const messageSubject = subjectLine?.replace(/^(Subject|Betreff):\s*/i, "") ?? "";
   const messageBody = messageLines.join("\n").trim();
 
   function updateDraft<K extends keyof ClientDraft>(key: K, value: ClientDraft[K]) {
@@ -119,7 +139,7 @@ export function ClientDetailDrawer() {
 
   async function handleSave() {
     if (!client || !draft) return;
-    const notes = draft.notes.trim();
+    const notes = canonicalKnownText(draft.notes.trim());
 
     await updateClient(client.id, {
       name: draft.name.trim() || client.name,
@@ -143,13 +163,16 @@ export function ClientDetailDrawer() {
     setGenerationError("");
 
     try {
-      const message = await generateAiFollowUp(client);
+      const message = await generateAiFollowUp(client, language);
       setGeneratedMessage(message);
     } catch (error) {
+      const rawMessage = error instanceof Error ? error.message : "";
       const message =
-        error instanceof Error
-          ? error.message
-          : "Could not generate the follow-up email. Please check the AI configuration.";
+        rawMessage === "AI follow-up endpoint unavailable" ||
+        rawMessage === "AI follow-up response was empty" ||
+        rawMessage.length === 0
+          ? t(language, "drawer.aiFallbackError")
+          : rawMessage;
       setGenerationError(message);
     } finally {
       setIsGenerating(false);
@@ -167,7 +190,7 @@ export function ClientDetailDrawer() {
     <div className="fixed inset-0 z-50 flex justify-end bg-guhr-text/18 backdrop-blur-sm">
       <button
         className="hidden flex-1 cursor-default lg:block"
-        aria-label="Close client detail"
+        aria-label={t(language, "drawer.close")}
         onClick={closeClient}
       />
       <aside className="scrollbar-soft h-full w-full overflow-y-auto border-l border-guhr-border bg-guhr-background shadow-soft sm:max-w-[760px]">
@@ -177,9 +200,9 @@ export function ClientDetailDrawer() {
               <div className="flex flex-wrap gap-2">
                 <Badge tone={status.tone}>{status.label}</Badge>
                 <Badge tone={client.priority === "High" ? "orange" : client.priority === "Low" ? "gray" : "neutral"}>
-                  {client.priority} priority
+                  {translatePriority(client.priority, language)} {t(language, "drawer.priority")}
                 </Badge>
-                {needsFollowUp && <Badge tone="red">Follow-up recommended</Badge>}
+                {needsFollowUp && <Badge tone="red">{t(language, "drawer.followUpRecommended")}</Badge>}
               </div>
               <h2 className="mt-3 text-2xl font-semibold tracking-normal text-guhr-text">
                 {client.name}
@@ -188,9 +211,9 @@ export function ClientDetailDrawer() {
             <div className="flex items-center gap-2">
               <Button size="sm" variant="primary" onClick={handleSave} disabled={isSaving}>
                 <CheckCircle2 className="h-4 w-4" />
-                {isSaving ? "Saving..." : "Save"}
+                {isSaving ? t(language, "drawer.saving") : t(language, "drawer.save")}
               </Button>
-              <Button size="icon" variant="ghost" onClick={closeClient} aria-label="Close drawer">
+              <Button size="icon" variant="ghost" onClick={closeClient} aria-label={t(language, "drawer.close")}>
                 <X className="h-5 w-5" />
               </Button>
             </div>
@@ -199,14 +222,14 @@ export function ClientDetailDrawer() {
 
         <div className="space-y-6 px-5 py-6 sm:px-7">
           <section className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
-            <FormField icon={UserRound} label="Client name">
+            <FormField icon={UserRound} label={t(language, "drawer.clientName")}>
               <Input
                 className={embeddedFieldClassName}
                 value={draft.name}
                 onChange={(event) => updateDraft("name", event.target.value)}
               />
             </FormField>
-            <FormField icon={Mail} label="Email">
+            <FormField icon={Mail} label={t(language, "drawer.email")}>
               <Input
                 className={embeddedFieldClassName}
                 type="email"
@@ -214,14 +237,14 @@ export function ClientDetailDrawer() {
                 onChange={(event) => updateDraft("email", event.target.value)}
               />
             </FormField>
-            <FormField icon={Phone} label="Phone">
+            <FormField icon={Phone} label={t(language, "drawer.phone")}>
               <Input
                 className={embeddedFieldClassName}
                 value={draft.phone}
                 onChange={(event) => updateDraft("phone", event.target.value)}
               />
             </FormField>
-            <FormField icon={Briefcase} label="Mandate" select>
+            <FormField icon={Briefcase} label={t(language, "drawer.mandate")} select>
               <Select
                 className={embeddedSelectClassName}
                 value={draft.mandateType}
@@ -229,12 +252,12 @@ export function ClientDetailDrawer() {
               >
                 {mandateTypes.map((type) => (
                   <option value={type} key={type}>
-                    {type}
+                    {translateMandateType(type, language)}
                   </option>
                 ))}
               </Select>
             </FormField>
-            <FormField icon={UserRound} label="Assigned" select>
+            <FormField icon={UserRound} label={t(language, "drawer.assigned")} select>
               <Select
                 className={embeddedSelectClassName}
                 value={draft.assignedTo}
@@ -247,7 +270,7 @@ export function ClientDetailDrawer() {
                 ))}
               </Select>
             </FormField>
-            <FormField icon={CalendarDays} label="Date added">
+            <FormField icon={CalendarDays} label={t(language, "drawer.dateAdded")}>
               <Input
                 className={embeddedFieldClassName}
                 type="date"
@@ -255,7 +278,7 @@ export function ClientDetailDrawer() {
                 onChange={(event) => updateDraft("dateAdded", event.target.value)}
               />
             </FormField>
-            <FormField icon={FileText} label="Lead source" select>
+            <FormField icon={FileText} label={t(language, "drawer.leadSource")} select>
               <Select
                 className={embeddedSelectClassName}
                 value={draft.leadSource}
@@ -263,12 +286,12 @@ export function ClientDetailDrawer() {
               >
                 {leadSources.map((source) => (
                   <option value={source} key={source}>
-                    {source}
+                    {translateLeadSource(source, language)}
                   </option>
                 ))}
               </Select>
             </FormField>
-            <FormField icon={Clock3} label="Current stage" select>
+            <FormField icon={Clock3} label={t(language, "drawer.currentStage")} select>
               <Select
                 className={embeddedSelectClassName}
                 value={draft.currentStage}
@@ -276,7 +299,7 @@ export function ClientDetailDrawer() {
               >
                 {boardColumns.map((column) => (
                   <option value={column.id} key={column.id}>
-                    {column.title}
+                    {translateColumn(column, language).title}
                   </option>
                 ))}
               </Select>
@@ -284,12 +307,12 @@ export function ClientDetailDrawer() {
           </section>
 
           <section className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-guhr-text">Notes / next steps</h3>
+            <h3 className="text-lg font-semibold text-guhr-text">{t(language, "drawer.notes")}</h3>
             <Textarea
               className="mt-4 min-h-40 bg-white"
               value={draft.notes}
               onChange={(event) => updateDraft("notes", event.target.value)}
-              placeholder="Internal notes and the next useful action."
+              placeholder={t(language, "drawer.notesPlaceholder")}
             />
           </section>
 
@@ -305,10 +328,10 @@ export function ClientDetailDrawer() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h3 className="text-2xl font-semibold tracking-normal text-guhr-text">
-                  Follow-up generator
+                  {t(language, "drawer.followUpGenerator")}
                 </h3>
                 <p className="mt-2 max-w-md text-sm leading-6 text-guhr-muted">
-                  Uses OpenAI to analyze stage, notes, missing checklist items and next step.
+                  {t(language, "drawer.followUpDescription")}
                 </p>
               </div>
               <Button
@@ -318,7 +341,7 @@ export function ClientDetailDrawer() {
                 disabled={isGenerating}
               >
                 <Send className="h-4 w-4" />
-                {isGenerating ? "Generating..." : "Generate Follow-Up"}
+                {isGenerating ? t(language, "drawer.generating") : t(language, "drawer.generateFollowUp")}
               </Button>
             </div>
             {generatedMessage && (
@@ -326,19 +349,19 @@ export function ClientDetailDrawer() {
                 <div className="flex items-center justify-between gap-3 border-b border-guhr-border pb-3">
                   <div className="flex flex-wrap items-center gap-2 text-guhr-muted">
                     <PencilLine className="h-4 w-4 text-guhr-gold" />
-                    <span className="text-sm font-medium">Draft email</span>
+                    <span className="text-sm font-medium">{t(language, "drawer.draftEmail")}</span>
                     <span className="rounded-full bg-guhr-gold-soft px-2.5 py-1 text-xs font-medium text-guhr-gold-dark">
-                      AI-generated
+                      {t(language, "drawer.aiGenerated")}
                     </span>
                   </div>
                   <Button variant="secondary" size="sm" onClick={handleCopy}>
                     <Copy className="h-4 w-4" />
-                    {copied ? "Copied" : "Copy"}
+                    {copied ? t(language, "drawer.copied") : t(language, "drawer.copy")}
                   </Button>
                 </div>
                 <div className="scrollbar-soft mt-4 max-h-80 overflow-auto text-sm leading-7 text-guhr-text">
                   <p>
-                    <strong>Subject:</strong> {messageSubject}
+                    <strong>{t(language, "drawer.subject")}</strong> {messageSubject}
                   </p>
                   <div className="mt-4 whitespace-pre-wrap">{messageBody}</div>
                 </div>
@@ -354,7 +377,7 @@ export function ClientDetailDrawer() {
           <section className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-4 shadow-sm">
             <div className="flex items-center gap-2">
               <Clipboard className="h-5 w-5 text-guhr-gold" />
-              <h3 className="font-semibold text-guhr-text">Activity timeline</h3>
+              <h3 className="font-semibold text-guhr-text">{t(language, "drawer.activityTimeline")}</h3>
             </div>
             <div className="scrollbar-soft mt-4 max-h-64 space-y-3 overflow-y-auto pr-2">
               {client.activity.map((activity) => (
@@ -368,13 +391,17 @@ export function ClientDetailDrawer() {
                   </span>
                   <div className="min-w-0 flex-1 border-b border-guhr-border/65 pb-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-medium text-guhr-text">{activity.title}</p>
+                      <p className="font-medium text-guhr-text">
+                        {translateKnownText(activity.title, language)}
+                      </p>
                       <time className="text-xs text-guhr-muted">
-                        {formatDateTime(activity.timestamp)}
+                        {formatDateTime(activity.timestamp, language)}
                       </time>
                     </div>
                     {activity.detail && (
-                      <p className="mt-1 text-sm leading-6 text-guhr-muted">{activity.detail}</p>
+                      <p className="mt-1 text-sm leading-6 text-guhr-muted">
+                        {translateActivityDetail(activity.detail, language)}
+                      </p>
                     )}
                   </div>
                 </div>

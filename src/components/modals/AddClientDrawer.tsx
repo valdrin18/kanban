@@ -11,6 +11,15 @@ import {
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { createChecklist, getColumnTitle, type ChecklistTemplates } from "../../data/board";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import {
+  canonicalChecklistLabel,
+  t,
+  translateColumnTitle,
+  translateLeadSource,
+  translateMandateType,
+  translatePriority,
+} from "../../lib/i18n";
+import { useLanguageStore } from "../../store/useLanguageStore";
 import { useBoardStore } from "../../store/useBoardStore";
 import type { ChecklistItem, MandateType, NewClientInput, Priority, TeamMember } from "../../types";
 import { ChecklistEditor } from "./ChecklistEditor";
@@ -47,6 +56,7 @@ function makeInitialForm(
 }
 
 export function AddClientDrawer() {
+  const language = useLanguageStore((state) => state.language);
   const columnId = useBoardStore((state) => state.addClientColumnId);
   const addClient = useBoardStore((state) => state.addClient);
   const closeAddClient = useBoardStore((state) => state.closeAddClient);
@@ -97,7 +107,7 @@ export function AddClientDrawer() {
         ...current.checklist,
         {
           id: checklistItemId(trimmedLabel),
-          label: trimmedLabel,
+          label: canonicalChecklistLabel(trimmedLabel),
           completed: false,
         },
       ],
@@ -111,7 +121,7 @@ export function AddClientDrawer() {
     setForm((current) => ({
       ...current,
       checklist: current.checklist.map((item) =>
-        item.id === itemId ? { ...item, label: trimmedLabel } : item,
+        item.id === itemId ? { ...item, label: canonicalChecklistLabel(trimmedLabel) } : item,
       ),
     }));
   }
@@ -145,7 +155,7 @@ export function AddClientDrawer() {
       notes: form.notes.trim() || "Prepare onboarding context and confirm next step.",
       checklist: form.checklist.map((item): ChecklistItem => ({
         ...item,
-        label: item.label.trim(),
+        label: canonicalChecklistLabel(item.label.trim()),
       })),
     });
   }
@@ -154,19 +164,19 @@ export function AddClientDrawer() {
     <div className="fixed inset-0 z-50 flex justify-end bg-guhr-text/18 backdrop-blur-sm">
       <button
         className="hidden flex-1 cursor-default lg:block"
-        aria-label="Close add client"
+        aria-label={t(language, "add.close")}
         onClick={closeAddClient}
       />
       <aside className="scrollbar-soft h-full w-full overflow-y-auto border-l border-guhr-border bg-guhr-background shadow-soft sm:max-w-[760px]">
         <div className="sticky top-0 z-10 border-b border-guhr-border bg-guhr-background/92 px-5 py-4 backdrop-blur-2xl sm:px-7">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-guhr-muted">Add client to</p>
+              <p className="text-sm font-medium text-guhr-muted">{t(language, "add.addClientTo")}</p>
               <h2 className="mt-1 text-2xl font-semibold tracking-normal text-guhr-text">
-                {getColumnTitle(activeColumnId, boardColumns)}
+                {translateColumnTitle(activeColumnId, getColumnTitle(activeColumnId, boardColumns), language)}
               </h2>
             </div>
-            <Button size="icon" variant="ghost" onClick={closeAddClient} aria-label="Close drawer">
+            <Button size="icon" variant="ghost" onClick={closeAddClient} aria-label={t(language, "drawer.close")}>
               <X className="h-5 w-5" />
             </Button>
           </div>
@@ -174,34 +184,34 @@ export function AddClientDrawer() {
 
         <form className="space-y-6 px-5 py-6 sm:px-7" onSubmit={handleSubmit}>
           <section className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
-            <FormField icon={UserRound} label="Client name">
+            <FormField icon={UserRound} label={t(language, "drawer.clientName")}>
               <Input
                 className={embeddedFieldClassName}
                 value={form.name}
                 onChange={(event) => update("name", event.target.value)}
-                placeholder="Example GmbH"
+                placeholder={t(language, "add.namePlaceholder")}
                 required
               />
             </FormField>
-            <FormField icon={Mail} label="Email">
+            <FormField icon={Mail} label={t(language, "drawer.email")}>
               <Input
                 className={embeddedFieldClassName}
                 type="email"
                 value={form.email}
                 onChange={(event) => update("email", event.target.value)}
-                placeholder="client@example.de"
+                placeholder={t(language, "add.emailPlaceholder")}
                 required
               />
             </FormField>
-            <FormField icon={Phone} label="Phone">
+            <FormField icon={Phone} label={t(language, "drawer.phone")}>
               <Input
                 className={embeddedFieldClassName}
                 value={form.phone}
                 onChange={(event) => update("phone", event.target.value)}
-                placeholder="+49 30 ..."
+                placeholder={t(language, "add.phonePlaceholder")}
               />
             </FormField>
-            <FormField icon={Briefcase} label="Mandate" select>
+            <FormField icon={Briefcase} label={t(language, "drawer.mandate")} select>
               <Select
                 className={embeddedSelectClassName}
                 value={form.mandateType}
@@ -209,12 +219,12 @@ export function AddClientDrawer() {
               >
                 {mandateTypes.map((type) => (
                   <option value={type} key={type}>
-                    {type}
+                    {translateMandateType(type, language)}
                   </option>
                 ))}
               </Select>
             </FormField>
-            <FormField icon={UserRound} label="Assigned" select>
+            <FormField icon={UserRound} label={t(language, "drawer.assigned")} select>
               <Select
                 className={embeddedSelectClassName}
                 value={form.assignedTo}
@@ -227,18 +237,18 @@ export function AddClientDrawer() {
                 ))}
               </Select>
             </FormField>
-            <FormField icon={CalendarDays} label="Priority" select>
+            <FormField icon={CalendarDays} label={t(language, "drawer.priority")} select>
               <Select
                 className={embeddedSelectClassName}
                 value={form.priority}
                 onChange={(event) => update("priority", event.target.value as Priority)}
               >
-                <option value="Low">Low</option>
-                <option value="Normal">Normal</option>
-                <option value="High">High</option>
+                <option value="Low">{translatePriority("Low", language)}</option>
+                <option value="Normal">{translatePriority("Normal", language)}</option>
+                <option value="High">{translatePriority("High", language)}</option>
               </Select>
             </FormField>
-            <FormField icon={FileText} label="Lead source" select>
+            <FormField icon={FileText} label={t(language, "drawer.leadSource")} select>
               <Select
                 className={embeddedSelectClassName}
                 value={form.leadSource}
@@ -246,7 +256,7 @@ export function AddClientDrawer() {
               >
                 {leadSources.map((source) => (
                   <option value={source} key={source}>
-                    {source}
+                    {translateLeadSource(source, language)}
                   </option>
                 ))}
               </Select>
@@ -254,12 +264,12 @@ export function AddClientDrawer() {
           </section>
 
           <section className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-guhr-text">Notes / next steps</h3>
+            <h3 className="text-lg font-semibold text-guhr-text">{t(language, "drawer.notes")}</h3>
             <Textarea
               className="mt-4 min-h-40 bg-white"
               value={form.notes}
               onChange={(event) => update("notes", event.target.value)}
-              placeholder="Internal notes and the next useful action."
+              placeholder={t(language, "drawer.notesPlaceholder")}
             />
           </section>
 
@@ -273,11 +283,11 @@ export function AddClientDrawer() {
 
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Button variant="ghost" onClick={closeAddClient}>
-              Cancel
+              {t(language, "add.cancel")}
             </Button>
             <Button type="submit" variant="primary" disabled={isSaving}>
               <Plus className="h-4 w-4" />
-              {isSaving ? "Adding..." : "Add client"}
+              {isSaving ? t(language, "add.adding") : t(language, "add.addClient")}
             </Button>
           </div>
         </form>

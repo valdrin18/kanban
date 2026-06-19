@@ -1,5 +1,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { canonicalChecklistLabel, t, translateChecklistLabel } from "../../lib/i18n";
+import { useLanguageStore } from "../../store/useLanguageStore";
 import type { ChecklistItem } from "../../types";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
@@ -19,6 +21,7 @@ export function ChecklistEditor({
   onRename,
   onToggle,
 }: ChecklistEditorProps) {
+  const language = useLanguageStore((state) => state.language);
   const [newLabel, setNewLabel] = useState("");
   const completed = checklist.filter((item) => item.completed).length;
   const percent = checklist.length === 0 ? 0 : Math.round((completed / checklist.length) * 100);
@@ -33,9 +36,9 @@ export function ChecklistEditor({
     <section className="rounded-[1.75rem] border border-guhr-border bg-white/78 p-4 shadow-sm">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 className="font-semibold text-guhr-text">Tax onboarding checklist</h3>
+          <h3 className="font-semibold text-guhr-text">{t(language, "checklist.title")}</h3>
           <p className="mt-1 text-sm text-guhr-muted">
-            {completed} of {checklist.length} completed
+            {completed} / {checklist.length} {t(language, "checklist.completed")}
           </p>
         </div>
         <span className="rounded-full bg-guhr-background px-3 py-1 text-sm font-semibold text-guhr-muted">
@@ -62,13 +65,14 @@ export function ChecklistEditor({
               className="h-4 w-4 shrink-0 rounded border-guhr-border accent-guhr-gold disabled:opacity-45"
             />
             <input
-              defaultValue={item.label}
+              key={`${item.id}-${language}`}
+              defaultValue={translateChecklistLabel(item.label, language)}
               onBlur={(event) => {
                 const nextLabel = event.target.value.trim();
                 if (nextLabel) {
-                  onRename(item.id, nextLabel);
+                  onRename(item.id, canonicalChecklistLabel(nextLabel));
                 } else {
-                  event.target.value = item.label;
+                  event.target.value = translateChecklistLabel(item.label, language);
                 }
               }}
               className="min-w-0 flex-1 bg-transparent text-sm outline-none"
@@ -77,7 +81,7 @@ export function ChecklistEditor({
               type="button"
               className="rounded-full p-1.5 text-guhr-muted transition hover:bg-red-50 hover:text-guhr-red"
               onClick={() => onRemove(item.id)}
-              aria-label={`Remove ${item.label}`}
+              aria-label={`${t(language, "checklist.remove")} ${translateChecklistLabel(item.label, language)}`}
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -88,11 +92,11 @@ export function ChecklistEditor({
         <Input
           value={newLabel}
           onChange={(event) => setNewLabel(event.target.value)}
-          placeholder="Add checklist item"
+          placeholder={t(language, "checklist.placeholder")}
         />
         <Button type="submit" variant="secondary" disabled={!newLabel.trim()}>
           <Plus className="h-4 w-4" />
-          Add
+          {t(language, "checklist.add")}
         </Button>
       </form>
     </section>

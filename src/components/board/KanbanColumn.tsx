@@ -2,8 +2,10 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { useDroppable } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
 import { Fragment } from "react";
+import { t, translateColumn } from "../../lib/i18n";
 import { cn } from "../../lib/utils";
 import { useBoardStore } from "../../store/useBoardStore";
+import { useLanguageStore } from "../../store/useLanguageStore";
 import type { BoardColumn, ClientCard as ClientCardType } from "../../types";
 import { ClientCard } from "../cards/ClientCard";
 import { Button } from "../ui/Button";
@@ -15,7 +17,9 @@ interface KanbanColumnProps {
 }
 
 export function KanbanColumn({ column, clients, placeholderIndex = null }: KanbanColumnProps) {
+  const language = useLanguageStore((state) => state.language);
   const openAddClient = useBoardStore((state) => state.openAddClient);
+  const translatedColumn = translateColumn(column, language);
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const normalizedPlaceholderIndex =
     placeholderIndex === null ? null : Math.min(Math.max(placeholderIndex, 0), clients.length);
@@ -34,11 +38,11 @@ export function KanbanColumn({ column, clients, placeholderIndex = null }: Kanba
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold leading-5 tracking-normal text-guhr-text">
-                {column.title}
+                {translatedColumn.title}
               </h2>
             </div>
             <p className="mt-2 min-h-[2.6rem] text-xs leading-5 text-guhr-muted">
-              {column.description}
+              {translatedColumn.description}
             </p>
           </div>
           <span className="rounded-full bg-guhr-background px-2.5 py-1 text-xs font-semibold text-guhr-muted">
@@ -53,7 +57,7 @@ export function KanbanColumn({ column, clients, placeholderIndex = null }: Kanba
           onClick={() => openAddClient(column.id)}
         >
           <Plus className="h-4 w-4" />
-          Add client
+          {t(language, "column.addClient")}
         </Button>
       </div>
 
@@ -70,7 +74,7 @@ export function KanbanColumn({ column, clients, placeholderIndex = null }: Kanba
 
           {clients.length === 0 && normalizedPlaceholderIndex === null && (
             <div className="flex min-h-36 items-center justify-center rounded-[1.45rem] border border-dashed border-guhr-border bg-white/38 p-5 text-center text-sm leading-6 text-guhr-muted">
-              Drop a client here or add a new onboarding card.
+              {t(language, "column.empty")}
             </div>
           )}
         </div>
