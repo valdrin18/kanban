@@ -6,6 +6,7 @@ import {
   Clipboard,
   Copy,
   FileText,
+  LoaderCircle,
   Mail,
   PencilLine,
   Phone,
@@ -156,7 +157,7 @@ export function ClientDetailDrawer() {
   }
 
   async function handleGenerate() {
-    if (!client) return;
+    if (!client || isGenerating) return;
     setIsGenerating(true);
     setCopied(false);
     setGeneratedMessage("");
@@ -336,12 +337,19 @@ export function ClientDetailDrawer() {
               </div>
               <Button
                 variant="primary"
-                className="h-10 w-full rounded-2xl px-4 text-sm sm:h-11 sm:w-auto"
+                className="h-10 w-full min-w-[11.75rem] overflow-hidden rounded-2xl px-4 text-sm whitespace-nowrap disabled:opacity-100 sm:h-11 sm:w-auto"
                 onClick={handleGenerate}
                 disabled={isGenerating}
+                aria-busy={isGenerating}
               >
-                <Send className="h-4 w-4" />
-                {isGenerating ? t(language, "drawer.generating") : t(language, "drawer.generateFollowUp")}
+                {isGenerating ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                <span className="inline-block min-w-[8.8rem] text-center">
+                  {isGenerating ? t(language, "drawer.generating") : t(language, "drawer.generateFollowUp")}
+                </span>
               </Button>
             </div>
             {generatedMessage && (
