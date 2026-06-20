@@ -1,6 +1,7 @@
 import { CSS } from "@dnd-kit/utilities";
 import { useSortable } from "@dnd-kit/sortable";
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useRef } from "react";
+import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 import {
   AlertTriangle,
   Briefcase,
@@ -35,6 +36,7 @@ interface ClientCardProps {
 export function ClientCard({ client }: ClientCardProps) {
   const language = useLanguageStore((state) => state.language);
   const openClient = useBoardStore((state) => state.openClient);
+  const suppressClickRef = useRef(false);
   const {
     attributes,
     listeners,
@@ -51,24 +53,51 @@ export function ClientCard({ client }: ClientCardProps) {
     transition,
   };
 
+  useEffect(() => {
+    if (!isDragging || suppressClickRef.current) return;
+
+    suppressClickRef.current = true;
+  }, [isDragging]);
+
+  useEffect(() => {
+    if (isDragging || !suppressClickRef.current) return;
+
+    const timeoutId = window.setTimeout(() => {
+      suppressClickRef.current = false;
+    }, 140);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isDragging]);
+
+  function handleCardClick() {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+
+    openClient(client.id);
+  }
+
   const dragHandle = (
-    <button
-      className="mt-0.5 touch-none rounded-xl p-1.5 text-guhr-muted opacity-70 transition hover:bg-guhr-background hover:text-guhr-text group-hover:opacity-100"
-      aria-label={`${t(language, "card.drag")} ${client.name}`}
-      onClick={(event) => event.stopPropagation()}
-      {...attributes}
-      {...listeners}
+    <span
+      className="mt-0.5 rounded-xl p-1.5 text-guhr-muted opacity-70 transition group-hover:opacity-100"
+      aria-hidden="true"
     >
       <GripVertical className="h-4 w-4" />
-    </button>
+    </span>
   );
 
   return (
     <ClientCardArticle
       client={client}
       dragHandle={dragHandle}
+      dragAttributes={{
+        ...attributes,
+        ...listeners,
+        "aria-label": `${t(language, "card.drag")} ${client.name}`,
+      }}
       isDragging={isDragging}
-      onClick={() => openClient(client.id)}
+      onClick={handleCardClick}
       setNodeRef={setNodeRef}
       style={style}
     />
@@ -96,6 +125,7 @@ export function ClientCardOverlay({ client }: ClientCardOverlayProps) {
 interface ClientCardArticleProps {
   client: ClientCardType;
   dragHandle: ReactNode;
+  dragAttributes?: HTMLAttributes<HTMLElement>;
   isDragging?: boolean;
   isOverlay?: boolean;
   onClick?: () => void;
@@ -106,6 +136,7 @@ interface ClientCardArticleProps {
 function ClientCardArticle({
   client,
   dragHandle,
+  dragAttributes,
   isDragging = false,
   isOverlay = false,
   onClick,
@@ -123,8 +154,10 @@ function ClientCardArticle({
       ref={setNodeRef}
       style={style}
       onClick={onClick}
+      {...dragAttributes}
       className={cn(
         "group rounded-[1.25rem] border border-guhr-border bg-white/92 p-3.5 shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:border-guhr-gold/35 hover:shadow-card sm:rounded-[1.35rem] sm:p-4",
+        dragAttributes && "cursor-grab touch-none active:cursor-grabbing",
         isDragging && "opacity-0",
         isOverlay && "w-[min(300px,calc(100vw-3rem))] rotate-[1deg] cursor-grabbing opacity-90 shadow-soft",
       )}
